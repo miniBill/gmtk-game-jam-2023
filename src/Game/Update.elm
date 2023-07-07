@@ -105,13 +105,32 @@ updatePosition frameStuff model =
             newHero : Hero
             newHero =
                 if newX /= position.x || newY /= position.y then
-                    if Set.member ( newX, newY ) model.walls then
+                    let
+                        free : Int -> Int -> Bool
+                        free posX posY =
+                            not (Set.member ( posX, posY ) model.walls)
+
+                        newPosition : Position
+                        newPosition =
+                            if free newX newY then
+                                { position | x = newX, y = newY }
+
+                            else if free newX position.y then
+                                { position | x = newX }
+
+                            else if free position.x newY then
+                                { position | y = newY }
+
+                            else
+                                position
+                    in
+                    if position == newPosition then
                         hero
 
                     else
                         { hero
-                            | position = { position | x = newX, y = newY }
-                            , facingRight = dx > 0
+                            | position = newPosition
+                            , facingRight = newPosition.x - position.x > 0
                             , waitTime = 1000 / actionsPerSecond
                             , moving = True
                         }
