@@ -37,6 +37,8 @@ type alias Model =
     , now : Time.Posix
     , width : Float
     , height : Float
+    , gameWidth : Int
+    , gameHeight : Int
     }
 
 
@@ -59,16 +61,6 @@ tileSize =
     16
 
 
-gameWidth : number
-gameWidth =
-    10
-
-
-gameHeight : number
-gameHeight =
-    10
-
-
 textHeight : number
 textHeight =
     2
@@ -87,7 +79,7 @@ textTileset =
 view : Model -> Html Msg
 view model =
     PixelEngine.toHtml
-        { width = gameWidth * tileSize
+        { width = toFloat model.gameWidth * tileSize
         , options =
             Options.default
                 |> Options.withScale (maxScale model)
@@ -95,7 +87,7 @@ view model =
                 |> Just
         }
         [ PixelEngine.imageArea
-            { height = gameHeight * tileSize
+            { height = toFloat model.gameHeight * tileSize
             , background = PixelEngine.colorBackground Color.blue
             }
             [ viewHero model ]
@@ -108,7 +100,7 @@ viewStatusMessage model =
     let
         charsPerLine : Int
         charsPerLine =
-            gameWidth * tileSize // textTileset.spriteHeight - 2
+            model.gameWidth * tileSize // textTileset.spriteHeight - 2
     in
     statusMessage model
         |> String.Extra.softBreak charsPerLine
@@ -140,7 +132,7 @@ statusMessage _ =
 
 
 maxScale : Model -> Int
-maxScale { width, height } =
+maxScale model =
     let
         borderWidth : number
         borderWidth =
@@ -148,13 +140,15 @@ maxScale { width, height } =
 
         maxScaleWidth : Float
         maxScaleWidth =
-            (width - 2 * borderWidth)
-                / (gameWidth * tileSize)
+            (model.width - 2 * borderWidth)
+                / (toFloat model.gameWidth * tileSize)
 
         maxScaleHeight : Float
         maxScaleHeight =
-            (height - 2 * borderWidth)
-                / (gameHeight * tileSize + (textHeight + 2) * toFloat textTileset.spriteHeight)
+            (model.height - 2 * borderWidth)
+                / ((toFloat model.gameHeight * tileSize)
+                    + ((textHeight + 2) * toFloat textTileset.spriteHeight)
+                  )
 
         maxScaleMin : Float
         maxScaleMin =
@@ -277,7 +271,7 @@ applyGamepadInput frameStuff model =
                     newX : Int
                     newX =
                         (position.x + dx)
-                            |> clamp 0 (gameWidth - 1)
+                            |> clamp 0 (model.gameWidth - 1)
 
                     dy : number
                     dy =
@@ -286,7 +280,7 @@ applyGamepadInput frameStuff model =
                     newY : Int
                     newY =
                         (position.y + dy)
-                            |> clamp 0 (gameHeight - 1)
+                            |> clamp 0 (model.gameHeight - 1)
                 in
                 if newX /= position.x || newY /= position.y then
                     { hero
@@ -370,6 +364,14 @@ init flags =
             , moving = False
             }
 
+        maxGameCells : number
+        maxGameCells =
+            180
+
+        gameWidth : Int
+        gameWidth =
+            floor <| sqrt (flags.width / flags.height * maxGameCells)
+
         model : Model
         model =
             { hero = hero
@@ -377,6 +379,8 @@ init flags =
             , now = flags.now
             , width = flags.width
             , height = flags.height
+            , gameWidth = gameWidth
+            , gameHeight = maxGameCells // gameWidth
             }
     in
     ( model
