@@ -1,0 +1,15 @@
+{
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.4.0",
+    "concurrently": "^8.2.0",
+    "elm-codegen": "^0.5.0",
+    "elm-watch": "^1.1.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "scripts": {
+    "start": "yarn build:prepare; concurrently \"yarn elm-watch hot\" \"cd dist; python -m http.server 8001\"",
+    "build:prepare": "mkdir -p dist; cp src/index.html src/favicon.svg src/*.js dist; yarn elm-codegen install; cp -r img dist/; ts-node ./scripts/generate.ts"
+  }
+}

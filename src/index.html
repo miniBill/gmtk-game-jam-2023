@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>My Awesome Game</title>
+  </head>
+  <body>
+    <main></main>
+    <script src="/elm.js"></script>
+    <script src="/gamepadPort.js"></script>
+    <script src="/elm-web-audio.js"></script>
+    <script>
+      let virtualCtx = null;
+
+      const app = Elm.Main.init({
+        node: document.querySelector("main"),
+        flags: {},
+      });
+
+      app.ports.toWebAudio.subscribe((nodes) => {
+        if (!virtualCtx) {
+          const ctx = new AudioContext();
+          virtualCtx = new VirtualAudioGraph(ctx, { autostart: true });
+        }
+        virtualCtx.update(nodes);
+      });
+
+      addGamepadPort(app);
+
+      window.onfocus = () => app.ports.onfocus.send({});
+      window.onblur = () => app.ports.onblur.send({});
+    </script>
+  </body>
+</html>
