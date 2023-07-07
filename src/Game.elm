@@ -165,8 +165,9 @@ maxScale { width, height } =
 
 viewHero : Model -> ( ( Float, Float ), Image msg )
 viewHero model =
-    viewAnimated
-        { spritesheet =
+    let
+        spritesheet : { tileset : Tileset, widthInTiles : Int }
+        spritesheet =
             if model.hero.moving then
                 if model.hero.facingRight then
                     Dungeon.Heroes.Knight.knightRunSpritesheet
@@ -179,6 +180,9 @@ viewHero model =
 
             else
                 Dungeon.Heroes.Knight.knightIdleSpritesheetFlipped
+    in
+    viewAnimated
+        { spritesheet = spritesheet
         , position = model.hero.position
         , key = "hero"
         }
