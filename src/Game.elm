@@ -44,6 +44,7 @@ type alias Hero =
     { position : Position
     , waitTime : Float
     , facingRight : Bool
+    , moving : Bool
     }
 
 
@@ -166,7 +167,14 @@ viewHero : Model -> ( ( Float, Float ), Image msg )
 viewHero model =
     viewAnimated
         { spritesheet =
-            if model.hero.facingRight then
+            if model.hero.moving then
+                if model.hero.facingRight then
+                    Dungeon.Heroes.Knight.knightRunSpritesheet
+
+                else
+                    Dungeon.Heroes.Knight.knightRunSpritesheetFlipped
+
+            else if model.hero.facingRight then
                 Dungeon.Heroes.Knight.knightIdleSpritesheet
 
             else
@@ -281,10 +289,11 @@ applyGamepadInput frameStuff model =
                         | position = { position | x = newX, y = newY }
                         , facingRight = dx > 0
                         , waitTime = 1000 / actionsPerSecond
+                        , moving = True
                     }
 
                 else
-                    hero
+                    { hero | moving = False }
     in
     { model | hero = newHero }
 
@@ -354,6 +363,7 @@ init flags =
             { position = { x = 0, y = 0 }
             , waitTime = 0
             , facingRight = True
+            , moving = False
             }
 
         model : Model
