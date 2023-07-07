@@ -234,7 +234,10 @@ applyGamepadInput frameStuff model =
     let
         onPress : Gamepad.Digital -> number -> number
         onPress key value =
-            if List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads then
+            if
+                List.member key model.keyboardPressed
+                    || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
+            then
                 value
 
             else
@@ -263,33 +266,25 @@ applyGamepadInput frameStuff model =
                     newX =
                         (position.x + dx)
                             |> clamp 0 (gameWidth - 1)
+
+                    dy : number
+                    dy =
+                        onPress Gamepad.DpadUp -1 + onPress Gamepad.DpadDown 1
+
+                    newY : Int
+                    newY =
+                        (position.y + dy)
+                            |> clamp 0 (gameHeight - 1)
                 in
-                if newX /= position.x then
+                if newX /= position.x || newY /= position.y then
                     { hero
-                        | position = { position | x = newX }
+                        | position = { position | x = newX, y = newY }
                         , facingRight = dx > 0
                         , waitTime = 1000 / actionsPerSecond
                     }
 
                 else
-                    let
-                        dy : number
-                        dy =
-                            onPress Gamepad.DpadUp -1 + onPress Gamepad.DpadDown 1
-
-                        newY : Int
-                        newY =
-                            (position.y + dy)
-                                |> clamp 0 (gameHeight - 1)
-                    in
-                    if newY /= position.y then
-                        { hero
-                            | position = { position | y = newY }
-                            , waitTime = 1000 / actionsPerSecond
-                        }
-
-                    else
-                        hero
+                    hero
     in
     { model | hero = newHero }
 
@@ -307,7 +302,7 @@ keyDecoder : Decoder Gamepad.Digital
 keyDecoder =
     Decode.andThen
         (\key ->
-            case toDirection key of
+            case toDigital key of
                 Just digital ->
                     Decode.succeed digital
 
@@ -317,8 +312,8 @@ keyDecoder =
         (Decode.field "key" Decode.string)
 
 
-toDirection : String -> Maybe Gamepad.Digital
-toDirection string =
+toDigital : String -> Maybe Gamepad.Digital
+toDigital string =
     case string of
         "ArrowLeft" ->
             Just DpadLeft
@@ -332,19 +327,19 @@ toDirection string =
         "ArrowDown" ->
             Just DpadDown
 
-        "W" ->
+        "w" ->
             Just DpadUp
 
-        "A" ->
+        "a" ->
             Just DpadLeft
 
-        "S" ->
+        "s" ->
             Just DpadDown
 
-        "D" ->
+        "d" ->
             Just DpadRight
 
-        "Space" ->
+        " " ->
             Just A
 
         _ ->
