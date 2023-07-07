@@ -2,8 +2,9 @@ port module Main exposing (Flags, Model, Msg, main)
 
 import Audio
 import Browser.Dom
-import Effect
 import Game
+import Game.Update
+import Game.View
 import Gamepad
 import Gamepad.Simple
 import GamepadPort
@@ -40,7 +41,7 @@ type alias InnerModel =
 type Msg
     = InitWebAudio
     | Init Game.Flags
-    | GameMsg Game.Msg
+    | GameMsg Game.Update.Msg
     | OnFocus
     | OnBlur
 
@@ -62,7 +63,7 @@ main =
 
 gamepadConfig : Gamepad.Simple.Config Msg
 gamepadConfig =
-    { onAnimationFrame = \stuff -> GameMsg (Game.onAnimationFrame stuff)
+    { onAnimationFrame = \stuff -> GameMsg (Game.Update.onAnimationFrame stuff)
     , onBlob = GamepadPort.onBlob
     , saveToLocalStorage = GamepadPort.saveToLocalStorage
     , controls =
@@ -94,17 +95,15 @@ update msg model =
     case ( msg, model ) of
         ( GameMsg gameMsg, WebAudioReady innerModel ) ->
             let
-                ( newGame, gameEffect ) =
-                    Game.update gameMsg innerModel.game
+                newGame : Game.Model
+                newGame =
+                    Game.Update.update gameMsg innerModel.game
             in
             ( WebAudioReady
                 { innerModel
                     | game = newGame
                 }
-            , Cmd.batch
-                [ Effect.toCmd effectConfig gameEffect
-                , audioCmd innerModel
-                ]
+            , audioCmd innerModel
             )
 
         ( InitWebAudio, WaitingWebAudioInit ) ->
@@ -126,8 +125,9 @@ update msg model =
 
         ( Init flags, WaitingWebAudioInit ) ->
             let
-                ( game, gameEffect ) =
-                    Game.init flags
+                game : Game.Model
+                game =
+                    Game.Update.init flags
 
                 innerModel : InnerModel
                 innerModel =
@@ -136,10 +136,7 @@ update msg model =
                     }
             in
             ( WebAudioReady innerModel
-            , Cmd.batch
-                [ Effect.toCmd effectConfig gameEffect
-                , audioCmd innerModel
-                ]
+            , audioCmd innerModel
             )
 
         ( OnFocus, WebAudioReady innerModel ) ->
@@ -164,12 +161,6 @@ update msg model =
             ( model, Cmd.none )
 
 
-effectConfig : Effect.Config Msg
-effectConfig =
-    { noop = OnFocus
-    }
-
-
 view : Model -> Html Msg
 view model =
     case model of
@@ -179,7 +170,7 @@ view model =
                 |> center
 
         WebAudioReady innerModel ->
-            [ Html.map GameMsg <| Game.view innerModel.game
+            [ Html.map GameMsg <| Game.View.view innerModel.game
             ]
                 |> center
 
@@ -207,7 +198,7 @@ subscriptions model =
             Sub.batch
                 [ onfocus <| \_ -> OnFocus
                 , onblur <| \_ -> OnBlur
-                , Sub.map GameMsg <| Game.subscriptions innerModel.game
+                , Sub.map GameMsg <| Game.Update.subscriptions innerModel.game
                 ]
 
         WaitingWebAudioInit ->
