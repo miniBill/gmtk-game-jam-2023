@@ -2,6 +2,7 @@ module Game.Types exposing (Flags, Hero, Model, Position)
 
 import EverySet exposing (EverySet)
 import Gamepad exposing (Digital)
+import Set exposing (Set)
 import Time
 
 
@@ -20,6 +21,7 @@ type alias Model =
     , height : Float
     , gameWidth : Int
     , gameHeight : Int
+    , walls : Set ( Int, Int )
     }
 
 

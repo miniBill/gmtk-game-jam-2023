@@ -2,6 +2,7 @@ module Game.View exposing (view)
 
 import Color
 import Dungeon.Heroes.Knight
+import Dungeon.Tiles.Wall
 import Fonts
 import Game.Types exposing (Model, Position)
 import Html exposing (Html)
@@ -9,6 +10,7 @@ import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
 import PixelEngine.Tile as Tile exposing (Tileset)
+import Set
 import String.Extra
 
 
@@ -26,9 +28,25 @@ view model =
             { height = toFloat model.gameHeight * tileSize
             , background = PixelEngine.colorBackground Color.blue
             }
-            [ viewHero model ]
+            (viewHero model :: viewWalls model)
         , viewStatusMessage model
         ]
+
+
+viewWalls : Model -> List ( ( Float, Float ), Image msg )
+viewWalls model =
+    model.walls
+        |> Set.toList
+        |> List.map viewWall
+
+
+viewWall : ( Int, Int ) -> ( ( Float, Float ), Image msg )
+viewWall ( x, y ) =
+    ( toFloatPosition { x = x, y = y }
+    , Image.fromTile
+        (Tile.fromPosition ( 0, 0 ))
+        Dungeon.Tiles.Wall.wall1.tileset
+    )
 
 
 viewStatusMessage : Model -> PixelEngine.Area msg
@@ -135,13 +153,20 @@ viewAnimated :
     }
     -> ( ( Float, Float ), Image msg )
 viewAnimated { position, spritesheet, key } =
-    ( ( toFloat <| tileSize * position.x, toFloat <| tileSize * position.y )
+    ( toFloatPosition position
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 )
             |> Tile.animated spritesheet.widthInTiles
         )
         spritesheet.tileset
         |> Image.movable key
+    )
+
+
+toFloatPosition : Position -> ( Float, Float )
+toFloatPosition position =
+    ( toFloat <| tileSize * position.x
+    , toFloat <| tileSize * position.y
     )
 
 

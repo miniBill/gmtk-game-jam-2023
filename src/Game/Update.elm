@@ -6,6 +6,7 @@ import Game.Types exposing (Flags, Hero, Model, Position)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
+import Set
 import Time
 
 
@@ -104,12 +105,16 @@ updatePosition frameStuff model =
             newHero : Hero
             newHero =
                 if newX /= position.x || newY /= position.y then
-                    { hero
-                        | position = { position | x = newX, y = newY }
-                        , facingRight = dx > 0
-                        , waitTime = 1000 / actionsPerSecond
-                        , moving = True
-                    }
+                    if Set.member ( newX, newY ) model.walls then
+                        hero
+
+                    else
+                        { hero
+                            | position = { position | x = newX, y = newY }
+                            , facingRight = dx > 0
+                            , waitTime = 1000 / actionsPerSecond
+                            , moving = True
+                        }
 
                 else
                     { hero | moving = False }
@@ -195,7 +200,7 @@ init flags =
     let
         hero : Hero
         hero =
-            { position = { x = 0, y = 0 }
+            { position = { x = 1, y = 1 }
             , waitTime = 0
             , facingRight = True
             , moving = False
@@ -204,11 +209,15 @@ init flags =
 
         maxGameCells : number
         maxGameCells =
-            180
+            360
 
         gameWidth : Int
         gameWidth =
             floor <| sqrt (flags.width / flags.height * maxGameCells)
+
+        gameHeight : Int
+        gameHeight =
+            maxGameCells // gameWidth
     in
     { hero = hero
     , keyboardPressed = EverySet.empty
@@ -216,7 +225,14 @@ init flags =
     , width = flags.width
     , height = flags.height
     , gameWidth = gameWidth
-    , gameHeight = maxGameCells // gameWidth
+    , gameHeight = gameHeight
+    , walls =
+        (List.map (\x -> ( x, 0 )) (List.range 0 (gameWidth - 1))
+            ++ List.map (\x -> ( x, gameHeight - 1 )) (List.range 0 (gameWidth - 1))
+            ++ List.map (\y -> ( 0, y )) (List.range 0 (gameHeight - 1))
+            ++ List.map (\y -> ( gameWidth - 1, y )) (List.range 0 (gameHeight - 1))
+        )
+            |> Set.fromList
     }
 
 
