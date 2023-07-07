@@ -174,23 +174,30 @@ view : Model -> Html Msg
 view model =
     case model of
         WaitingWebAudioInit ->
-            Html.div
-                [ Html.Events.onClick InitWebAudio
-                , Html.Attributes.style "position" "absolute"
-                , Html.Attributes.style "top" "0"
-                , Html.Attributes.style "left" "0"
-                , Html.Attributes.style "width" "100vw"
-                , Html.Attributes.style "height" "100vh"
-                , Html.Attributes.style "display" "flex"
-                , Html.Attributes.style "color" "white"
-                , Html.Attributes.style "align-items" "center"
-                , Html.Attributes.style "justify-content" "center"
-                ]
-                [ Html.div [] [ Html.text "Click anywhere to start" ]
-                ]
+            [ Html.div [] [ Html.text "Click anywhere to start" ]
+            ]
+                |> center
 
         WebAudioReady innerModel ->
-            Html.map GameMsg <| Game.view innerModel.game
+            [ Html.map GameMsg <| Game.view innerModel.game
+            ]
+                |> center
+
+
+center : List (Html Msg) -> Html Msg
+center =
+    Html.div
+        [ Html.Events.onClick InitWebAudio
+        , Html.Attributes.style "position" "absolute"
+        , Html.Attributes.style "top" "0"
+        , Html.Attributes.style "left" "0"
+        , Html.Attributes.style "width" "100vw"
+        , Html.Attributes.style "height" "100vh"
+        , Html.Attributes.style "display" "flex"
+        , Html.Attributes.style "color" "white"
+        , Html.Attributes.style "align-items" "center"
+        , Html.Attributes.style "justify-content" "center"
+        ]
 
 
 subscriptions : Model -> Sub Msg

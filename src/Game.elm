@@ -50,12 +50,12 @@ tileSize =
 
 gameWidth : number
 gameWidth =
-    10
+    20
 
 
 gameHeight : number
 gameHeight =
-    10
+    20
 
 
 view : Model -> Html Msg
@@ -78,11 +78,15 @@ view model =
 maxScale : Model -> Int
 maxScale { width, height } =
     let
+        borderWidth : number
+        borderWidth =
+            tileSize
+
         exp : Float
         exp =
             min
-                (logBase 2 (width / (gameWidth * tileSize)))
-                (logBase 2 (height / (gameHeight * tileSize)))
+                (logBase 2 ((width - 2 * borderWidth) / (gameWidth * tileSize)))
+                (logBase 2 ((height - 2 * borderWidth) / (gameHeight * tileSize)))
     in
     2 ^ floor exp
 
