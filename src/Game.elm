@@ -1,4 +1,4 @@
-module Game exposing (Flags, Model, Msg, Position, init, onAnimationFrame, subscriptions, time, update, view)
+module Game exposing (Flags, Hero, Model, Msg, Position, init, onAnimationFrame, subscriptions, time, update, view)
 
 import Browser.Events
 import Color
@@ -164,7 +164,7 @@ maxScale { width, height } =
 
 viewHero : Model -> ( ( Float, Float ), Image msg )
 viewHero model =
-    viewAnimated model
+    viewAnimated
         { spritesheet =
             if model.hero.facingRight then
                 Dungeon.Heroes.Knight.knightIdleSpritesheet
@@ -177,14 +177,12 @@ viewHero model =
 
 
 viewAnimated :
-    Model
-    ->
-        { position : Position
-        , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
-        , key : String
-        }
+    { position : Position
+    , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
+    , key : String
+    }
     -> ( ( Float, Float ), Image msg )
-viewAnimated model { position, spritesheet, key } =
+viewAnimated { position, spritesheet, key } =
     ( ( toFloat <| tileSize * position.x, toFloat <| tileSize * position.y )
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 )
@@ -246,12 +244,10 @@ applyGamepadInput frameStuff model =
         hero =
             model.hero
 
-        ( newPosition, newFacingRight, newWaitTime ) =
+        newHero : Hero
+        newHero =
             if hero.waitTime > 0 then
-                ( hero.position
-                , hero.facingRight
-                , max 0 <| hero.waitTime - frameStuff.dt
-                )
+                { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
 
             else
                 let
@@ -269,10 +265,11 @@ applyGamepadInput frameStuff model =
                             |> clamp 0 (gameWidth - 1)
                 in
                 if newX /= position.x then
-                    ( { position | x = newX }
-                    , dx > 0
-                    , 1000 / actionsPerSecond
-                    )
+                    { hero
+                        | position = { position | x = newX }
+                        , facingRight = dx > 0
+                        , waitTime = 1000 / actionsPerSecond
+                    }
 
                 else
                     let
@@ -286,22 +283,15 @@ applyGamepadInput frameStuff model =
                                 |> clamp 0 (gameHeight - 1)
                     in
                     if newY /= position.y then
-                        ( { position | y = newY }
-                        , hero.facingRight
-                        , 1000 / actionsPerSecond
-                        )
+                        { hero
+                            | position = { position | y = newY }
+                            , waitTime = 1000 / actionsPerSecond
+                        }
 
                     else
-                        ( position, hero.facingRight, hero.waitTime )
+                        hero
     in
-    { model
-        | hero =
-            { hero
-                | position = newPosition
-                , waitTime = newWaitTime
-                , facingRight = newFacingRight
-            }
-    }
+    { model | hero = newHero }
 
 
 subscriptions : Model -> Sub Msg
