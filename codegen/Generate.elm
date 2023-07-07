@@ -5,6 +5,7 @@ module Generate exposing (main)
 import Base64
 import Elm exposing (File)
 import Gen.CodeGen.Generate as Generate
+import Gen.PixelEngine.Tile
 import Image
 import Json.Decode
 import Json.Encode
@@ -48,7 +49,6 @@ decodeFile =
                         |> List.reverse
                         |> List.drop 1
                         |> List.reverse
-                        |> List.map String.Extra.classify
 
                 filename : String
                 filename =
@@ -70,30 +70,51 @@ directoryToGen : List String -> List InputFile -> File
 directoryToGen moduleName files =
     files
         |> List.filterMap (fileToGen moduleName)
-        |> Elm.file moduleName
+        |> Elm.file (List.map String.Extra.classify moduleName)
 
 
 fileToGen : List String -> InputFile -> Maybe Elm.Declaration
 fileToGen moduleName { filename, contents } =
+    let
+        name : String
+        name =
+            toName filename
+
+        path =
+            String.join "/" (moduleName ++ [ name ++ ".png" ])
+    in
     contents
         |> Base64.toBytes
         |> Maybe.andThen Image.decode
         |> Maybe.map
             (\image ->
                 let
-                    name : String
-                    name =
-                        toName filename
-
                     { width, height } =
                         Image.dimensions image
                 in
-                Elm.record
-                    [ ( "path", Elm.string <| String.join "/" (moduleName ++ [ name ++ ".png" ]) )
-                    , ( "width", Elm.int width )
-                    , ( "height", Elm.int height )
-                    ]
-                    |> Elm.declaration name
+                if List.member "Dungeon" moduleName then
+                    Elm.record
+                        [ ( "tileset"
+                          , Gen.PixelEngine.Tile.tileset
+                                { source = "img/" ++ path
+                                , spriteWidth = 16
+                                , spriteHeight = 16
+                                }
+                          )
+                        , ( "widthInTiles", Elm.int (width // 16) )
+                        ]
+
+                else
+                    Elm.record
+                        [ ( "path", Elm.string path )
+                        , ( "width", Elm.int width )
+                        , ( "height", Elm.int height )
+                        ]
+            )
+        |> Maybe.map
+            (\value ->
+                value
+                    |> Elm.declaration (String.Extra.camelize name)
                     |> Elm.expose
             )
 

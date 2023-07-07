@@ -159,8 +159,7 @@ update msg model =
 
 effectConfig : Effect.Config Msg
 effectConfig =
-    { loadedTexture =
-        \key texture -> GameMsg <| Game.loadedTexture key texture
+    { noop = OnFocus
     }
 
 

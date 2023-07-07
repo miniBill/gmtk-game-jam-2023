@@ -1,12 +1,15 @@
-module Game exposing (Flags, Model, Msg, Position, init, loadedTexture, onAnimationFrame, subscriptions, time, update, view)
+module Game exposing (Flags, Model, Msg, Position, init, onAnimationFrame, subscriptions, time, update, view)
 
 import Browser.Events
-import Dict
+import Color
+import Dungeon.Heroes.Knight
 import Effect exposing (Effect)
 import Gamepad exposing (Gamepad)
 import Gamepad.Simple exposing (FrameStuff)
 import Html exposing (Html)
-import PixelEngine exposing (Area)
+import PixelEngine
+import PixelEngine.Image as Image exposing (Image)
+import PixelEngine.Options as Options
 import PixelEngine.Tile as Tile
 import Time
 
@@ -40,16 +43,49 @@ type alias Position =
 view : Model -> Html Msg
 view model =
     PixelEngine.toHtml
-        { width = model.width
-        , options = Nothing
+        { width = 10 * 16
+        , options = Just (Options.default |> Options.withScale 4)
         }
-        [ viewHero model ]
+        [ PixelEngine.imageArea
+            { height = 10 * 16
+            , background = PixelEngine.colorBackground <| Color.blue
+            }
+            [ viewHero model ]
+        ]
 
 
-viewHero : Model -> Area msg
-viewHero { hero, now } =
-    Tile.fromPosition ( 0, 0 )
-        |> Tile.animated 0
+idleFramesPerSecond : number
+idleFramesPerSecond =
+    4
+
+
+viewHero : Model -> ( ( Float, Float ), Image msg )
+viewHero model =
+    viewAnimated model
+        { spritesheet = Dungeon.Heroes.Knight.knightIdleSpritesheet
+        , position = model.hero.position
+        , key = "hero"
+        }
+
+
+viewAnimated :
+    Model
+    ->
+        { position : Position
+        , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
+        , key : String
+        }
+    -> ( ( Float, Float ), Image msg )
+viewAnimated model { position, spritesheet, key } =
+    ( ( toFloat position.x, toFloat position.y )
+    , Image.fromTile
+        (Tile.fromPosition ( 0, 0 )
+            |> Tile.animated
+                (modBy spritesheet.widthInTiles (Time.posixToMillis model.now // (1000 // idleFramesPerSecond)))
+        )
+        spritesheet.tileset
+        |> Image.movable key
+    )
 
 
 update : Msg -> Model -> ( Model, Effect )
@@ -126,7 +162,6 @@ init flags =
             , now = flags.now
             , width = flags.width
             , height = flags.height
-            , textures = Dict.empty
             }
     in
     ( model
@@ -142,8 +177,3 @@ time { now } =
 onAnimationFrame : FrameStuff -> Msg
 onAnimationFrame frameStuff =
     Tick frameStuff
-
-
-loadedTexture : String -> Result Texture.Error Texture -> Msg
-loadedTexture key content =
-    LoadedTexture key content
