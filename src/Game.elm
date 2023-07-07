@@ -4,7 +4,7 @@ import Browser.Events
 import Color
 import Dungeon.Heroes.Knight
 import Effect exposing (Effect)
-import Gamepad exposing (Gamepad)
+import Gamepad
 import Gamepad.Simple exposing (FrameStuff)
 import Html exposing (Html)
 import PixelEngine
@@ -27,7 +27,10 @@ type Msg
 
 
 type alias Model =
-    { hero : { position : Position }
+    { hero :
+        { position : Position
+        , waitTime : Float
+        }
     , now : Time.Posix
     , width : Float
     , height : Float
@@ -89,6 +92,11 @@ idleFramesPerSecond =
     4
 
 
+actionsPerSecond : number
+actionsPerSecond =
+    10
+
+
 viewHero : Model -> ( ( Float, Float ), Image msg )
 viewHero model =
     viewAnimated model
@@ -107,7 +115,7 @@ viewAnimated :
         }
     -> ( ( Float, Float ), Image msg )
 viewAnimated model { position, spritesheet, key } =
-    ( ( toFloat position.x, toFloat position.y )
+    ( ( toFloat <| tileSize * position.x, toFloat <| tileSize * position.y )
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 )
             |> Tile.animated
@@ -121,28 +129,21 @@ viewAnimated model { position, spritesheet, key } =
 update : Msg -> Model -> ( Model, Effect )
 update msg model =
     case msg of
-        Tick ({ gamepads } as frameStuff) ->
-            -- let
-            --     deltaT : Duration
-            --     deltaT =
-            --         frameStuff.dt
-            --             -- Avoid jumps if focus is lost
-            --             |> min 200
-            --             |> Duration.milliseconds
-            -- in
+        Tick frameStuff ->
+            let
+                -- Avoid jumps if focus is lost
+                fixed : FrameStuff
+                fixed =
+                    { frameStuff | dt = min 200 frameStuff.dt }
+            in
             ( { model
-                | now = frameStuff.timestamp
+                | now = fixed.timestamp
               }
-                |> applyGamepadInput gamepads
-                |> resetBall gamepads
+                |> applyGamepadInput fixed
             , Effect.none
             )
 
         Resize w h ->
-            let
-                _ =
-                    Debug.log "resize" msg
-            in
             ( { model
                 | width = toFloat w
                 , height = toFloat h
@@ -151,35 +152,65 @@ update msg model =
             )
 
 
-resetBall : List Gamepad -> Model -> Model
-resetBall gamepads model =
-    if
-        List.any
-            (\gamepad -> Gamepad.wasReleased gamepad Gamepad.B)
-            gamepads
-    then
-        model
+applyGamepadInput : FrameStuff -> Model -> Model
+applyGamepadInput frameStuff model =
+    let
+        onPress : Gamepad.Digital -> number -> number
+        onPress key value =
+            if List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads then
+                value
 
-    else
-        (\a -> a) model
+            else
+                0
 
+        hero : { position : Position, waitTime : Float }
+        hero =
+            model.hero
 
-applyGamepadInput : List Gamepad -> Model -> Model
-applyGamepadInput gamepads model =
-    gamepadToAccelleration gamepads model
+        ( newPosition, newWaitTime ) =
+            if hero.waitTime > 0 then
+                ( hero.position, max 0 <| hero.waitTime - frameStuff.dt )
 
+            else
+                let
+                    position : Position
+                    position =
+                        hero.position
 
-gamepadToAccelleration : List Gamepad -> Model -> Model
-gamepadToAccelleration gamepads model =
-    if
-        List.any
-            (\gamepad -> Gamepad.isPressed gamepad Gamepad.LeftStickLeft)
-            gamepads
-    then
-        model
+                    dx : number
+                    dx =
+                        onPress Gamepad.DpadLeft -1 + onPress Gamepad.DpadRight 1
+                in
+                if dx /= 0 then
+                    ( { position
+                        | x =
+                            (position.x + dx)
+                                |> clamp 0 (gameWidth - 1)
+                      }
+                    , 1000 / actionsPerSecond
+                    )
 
-    else
-        (\a -> a) model
+                else
+                    let
+                        dy : number
+                        dy =
+                            onPress Gamepad.DpadUp -1 + onPress Gamepad.DpadDown 1
+                    in
+                    if dy /= 0 then
+                        ( { position
+                            | y =
+                                (position.y + dy)
+                                    |> clamp 0 (gameHeight - 1)
+                          }
+                        , 1000 / actionsPerSecond
+                        )
+
+                    else
+                        ( position, hero.waitTime )
+    in
+    { model
+        | hero = { hero | position = newPosition, waitTime = newWaitTime }
+    }
 
 
 subscriptions : Model -> Sub Msg
@@ -192,7 +223,10 @@ init flags =
     let
         model : Model
         model =
-            { hero = { position = { x = 0, y = 0 } }
+            { hero =
+                { position = { x = 0, y = 0 }
+                , waitTime = 0
+                }
             , now = flags.now
             , width = flags.width
             , height = flags.height

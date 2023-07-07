@@ -4,6 +4,7 @@ import Audio
 import Browser.Dom
 import Effect
 import Game
+import Gamepad
 import Gamepad.Simple
 import GamepadPort
 import Html exposing (Html)
@@ -64,7 +65,13 @@ gamepadConfig =
     { onAnimationFrame = \stuff -> GameMsg (Game.onAnimationFrame stuff)
     , onBlob = GamepadPort.onBlob
     , saveToLocalStorage = GamepadPort.saveToLocalStorage
-    , controls = Gamepad.Simple.basicControls
+    , controls =
+        [ ( "Up", Gamepad.DpadUp )
+        , ( "Down", Gamepad.DpadDown )
+        , ( "Left", Gamepad.DpadLeft )
+        , ( "Right", Gamepad.DpadRight )
+        , ( "Flip", Gamepad.A )
+        ]
     }
 
 
