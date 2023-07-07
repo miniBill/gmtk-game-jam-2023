@@ -175,6 +175,7 @@ view model =
                 , Html.Attributes.style "width" "100vw"
                 , Html.Attributes.style "height" "100vh"
                 , Html.Attributes.style "display" "flex"
+                , Html.Attributes.style "color" "white"
                 , Html.Attributes.style "align-items" "center"
                 , Html.Attributes.style "justify-content" "center"
                 ]

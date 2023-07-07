@@ -40,18 +40,48 @@ type alias Position =
     }
 
 
+tileSize : number
+tileSize =
+    16
+
+
+gameWidth : number
+gameWidth =
+    10
+
+
+gameHeight : number
+gameHeight =
+    10
+
+
 view : Model -> Html Msg
 view model =
     PixelEngine.toHtml
-        { width = 10 * 16
-        , options = Just (Options.default |> Options.withScale 4)
+        { width = gameWidth * tileSize
+        , options =
+            Options.default
+                |> Options.withScale (maxScale model)
+                |> Just
         }
         [ PixelEngine.imageArea
-            { height = 10 * 16
+            { height = gameHeight * tileSize
             , background = PixelEngine.colorBackground <| Color.blue
             }
             [ viewHero model ]
         ]
+
+
+maxScale : Model -> Int
+maxScale { width, height } =
+    let
+        exp : Float
+        exp =
+            min
+                (logBase 2 (width / (gameWidth * tileSize)))
+                (logBase 2 (height / (gameHeight * tileSize)))
+    in
+    2 ^ floor exp
 
 
 idleFramesPerSecond : number
@@ -109,6 +139,10 @@ update msg model =
             )
 
         Resize w h ->
+            let
+                _ =
+                    Debug.log "resize" msg
+            in
             ( { model
                 | width = toFloat w
                 , height = toFloat h
