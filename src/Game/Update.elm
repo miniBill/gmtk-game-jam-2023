@@ -104,7 +104,10 @@ updatePosition frameStuff model =
 
             newHero : Hero
             newHero =
-                if newX /= position.x || newY /= position.y then
+                if newX == position.x && newY == position.y then
+                    { hero | moving = False }
+
+                else
                     let
                         free : Int -> Int -> Bool
                         free posX posY =
@@ -134,9 +137,6 @@ updatePosition frameStuff model =
                             , waitTime = 1000 / actionsPerSecond
                             , moving = True
                         }
-
-                else
-                    { hero | moving = False }
         in
         { model | hero = newHero }
 
