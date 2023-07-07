@@ -92,16 +92,25 @@ fileToGen moduleName { filename, contents } =
                     { width, height } =
                         Image.dimensions image
                 in
-                if List.member "Dungeon" moduleName then
+                if List.member "Dungeon" moduleName || List.member "Fonts" moduleName then
+                    let
+                        size : number
+                        size =
+                            if String.contains "8x8" name then
+                                8
+
+                            else
+                                16
+                    in
                     Elm.record
                         [ ( "tileset"
                           , Gen.PixelEngine.Tile.tileset
                                 { source = "img/" ++ path
-                                , spriteWidth = 16
-                                , spriteHeight = 16
+                                , spriteWidth = size
+                                , spriteHeight = size
                                 }
                           )
-                        , ( "widthInTiles", Elm.int (width // 16) )
+                        , ( "widthInTiles", Elm.int (width // size) )
                         ]
 
                 else

@@ -4,13 +4,16 @@ import Browser.Events
 import Color
 import Dungeon.Heroes.Knight
 import Effect exposing (Effect)
-import Gamepad
+import Fonts
+import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Html exposing (Html)
+import Json.Decode as Decode exposing (Decoder)
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
-import PixelEngine.Tile as Tile
+import PixelEngine.Tile as Tile exposing (Tileset)
+import String.Extra
 import Time
 
 
@@ -24,16 +27,23 @@ type alias Flags =
 type Msg
     = Tick FrameStuff
     | Resize Int Int
+    | KeyDown Gamepad.Digital
+    | KeyUp Gamepad.Digital
 
 
 type alias Model =
-    { hero :
-        { position : Position
-        , waitTime : Float
-        }
+    { hero : Hero
+    , keyboardPressed : List Digital
     , now : Time.Posix
     , width : Float
     , height : Float
+    }
+
+
+type alias Hero =
+    { position : Position
+    , waitTime : Float
+    , facingRight : Bool
     }
 
 
@@ -50,12 +60,27 @@ tileSize =
 
 gameWidth : number
 gameWidth =
-    20
+    10
 
 
 gameHeight : number
 gameHeight =
-    20
+    10
+
+
+textHeight : number
+textHeight =
+    2
+
+
+actionsPerSecond : number
+actionsPerSecond =
+    10
+
+
+textTileset : Tileset
+textTileset =
+    Fonts.berlin8x8.tileset
 
 
 view : Model -> Html Msg
@@ -65,14 +90,52 @@ view model =
         , options =
             Options.default
                 |> Options.withScale (maxScale model)
+                |> Options.withAnimationFPS 10
                 |> Just
         }
         [ PixelEngine.imageArea
             { height = gameHeight * tileSize
-            , background = PixelEngine.colorBackground <| Color.blue
+            , background = PixelEngine.colorBackground Color.blue
             }
             [ viewHero model ]
+        , viewStatusMessage model
         ]
+
+
+viewStatusMessage : Model -> PixelEngine.Area Msg
+viewStatusMessage model =
+    let
+        charsPerLine : Int
+        charsPerLine =
+            gameWidth * tileSize // textTileset.spriteHeight - 2
+    in
+    statusMessage model
+        |> String.Extra.softBreak charsPerLine
+        |> List.take textHeight
+        |> List.map (Tile.fromText ( 0, 0 ))
+        |> List.indexedMap
+            (\row tiles ->
+                List.indexedMap
+                    (\column tile ->
+                        ( ( 1 + column
+                          , 1 + row
+                          )
+                        , tile
+                        )
+                    )
+                    tiles
+            )
+        |> List.concat
+        |> PixelEngine.tiledArea
+            { rows = textHeight * 2
+            , tileset = textTileset
+            , background = PixelEngine.colorBackground Color.white
+            }
+
+
+statusMessage : Model -> String
+statusMessage _ =
+    "To win the game, reverse the rolls!"
 
 
 maxScale : Model -> Int
@@ -82,29 +145,32 @@ maxScale { width, height } =
         borderWidth =
             tileSize
 
-        exp : Float
-        exp =
-            min
-                (logBase 2 ((width - 2 * borderWidth) / (gameWidth * tileSize)))
-                (logBase 2 ((height - 2 * borderWidth) / (gameHeight * tileSize)))
+        maxScaleWidth : Float
+        maxScaleWidth =
+            (width - 2 * borderWidth)
+                / (gameWidth * tileSize)
+
+        maxScaleHeight : Float
+        maxScaleHeight =
+            (height - 2 * borderWidth)
+                / (gameHeight * tileSize + (textHeight + 2) * toFloat textTileset.spriteHeight)
+
+        maxScaleMin : Float
+        maxScaleMin =
+            min maxScaleWidth maxScaleHeight
     in
-    2 ^ floor exp
-
-
-idleFramesPerSecond : number
-idleFramesPerSecond =
-    4
-
-
-actionsPerSecond : number
-actionsPerSecond =
-    10
+    2 ^ floor (logBase 2 maxScaleMin)
 
 
 viewHero : Model -> ( ( Float, Float ), Image msg )
 viewHero model =
     viewAnimated model
-        { spritesheet = Dungeon.Heroes.Knight.knightIdleSpritesheet
+        { spritesheet =
+            if model.hero.facingRight then
+                Dungeon.Heroes.Knight.knightIdleSpritesheet
+
+            else
+                Dungeon.Heroes.Knight.knightIdleSpritesheetFlipped
         , position = model.hero.position
         , key = "hero"
         }
@@ -122,8 +188,7 @@ viewAnimated model { position, spritesheet, key } =
     ( ( toFloat <| tileSize * position.x, toFloat <| tileSize * position.y )
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 )
-            |> Tile.animated
-                (modBy spritesheet.widthInTiles (Time.posixToMillis model.now // (1000 // idleFramesPerSecond)))
+            |> Tile.animated spritesheet.widthInTiles
         )
         spritesheet.tileset
         |> Image.movable key
@@ -155,6 +220,16 @@ update msg model =
             , Effect.none
             )
 
+        KeyDown key ->
+            ( { model | keyboardPressed = key :: model.keyboardPressed }
+            , Effect.none
+            )
+
+        KeyUp key ->
+            ( { model | keyboardPressed = List.filter ((/=) key) model.keyboardPressed }
+            , Effect.none
+            )
+
 
 applyGamepadInput : FrameStuff -> Model -> Model
 applyGamepadInput frameStuff model =
@@ -167,13 +242,16 @@ applyGamepadInput frameStuff model =
             else
                 0
 
-        hero : { position : Position, waitTime : Float }
+        hero : Hero
         hero =
             model.hero
 
-        ( newPosition, newWaitTime ) =
+        ( newPosition, newFacingRight, newWaitTime ) =
             if hero.waitTime > 0 then
-                ( hero.position, max 0 <| hero.waitTime - frameStuff.dt )
+                ( hero.position
+                , hero.facingRight
+                , max 0 <| hero.waitTime - frameStuff.dt
+                )
 
             else
                 let
@@ -184,13 +262,15 @@ applyGamepadInput frameStuff model =
                     dx : number
                     dx =
                         onPress Gamepad.DpadLeft -1 + onPress Gamepad.DpadRight 1
+
+                    newX : Int
+                    newX =
+                        (position.x + dx)
+                            |> clamp 0 (gameWidth - 1)
                 in
-                if dx /= 0 then
-                    ( { position
-                        | x =
-                            (position.x + dx)
-                                |> clamp 0 (gameWidth - 1)
-                      }
+                if newX /= position.x then
+                    ( { position | x = newX }
+                    , dx > 0
                     , 1000 / actionsPerSecond
                     )
 
@@ -199,38 +279,102 @@ applyGamepadInput frameStuff model =
                         dy : number
                         dy =
                             onPress Gamepad.DpadUp -1 + onPress Gamepad.DpadDown 1
+
+                        newY : Int
+                        newY =
+                            (position.y + dy)
+                                |> clamp 0 (gameHeight - 1)
                     in
-                    if dy /= 0 then
-                        ( { position
-                            | y =
-                                (position.y + dy)
-                                    |> clamp 0 (gameHeight - 1)
-                          }
+                    if newY /= position.y then
+                        ( { position | y = newY }
+                        , hero.facingRight
                         , 1000 / actionsPerSecond
                         )
 
                     else
-                        ( position, hero.waitTime )
+                        ( position, hero.facingRight, hero.waitTime )
     in
     { model
-        | hero = { hero | position = newPosition, waitTime = newWaitTime }
+        | hero =
+            { hero
+                | position = newPosition
+                , waitTime = newWaitTime
+                , facingRight = newFacingRight
+            }
     }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize Resize
+    Sub.batch
+        [ Browser.Events.onResize Resize
+        , Browser.Events.onKeyDown (Decode.map KeyDown keyDecoder)
+        , Browser.Events.onKeyUp (Decode.map KeyUp keyDecoder)
+        ]
+
+
+keyDecoder : Decoder Gamepad.Digital
+keyDecoder =
+    Decode.andThen
+        (\key ->
+            case toDirection key of
+                Just digital ->
+                    Decode.succeed digital
+
+                Nothing ->
+                    Decode.fail "Ignored"
+        )
+        (Decode.field "key" Decode.string)
+
+
+toDirection : String -> Maybe Gamepad.Digital
+toDirection string =
+    case string of
+        "ArrowLeft" ->
+            Just DpadLeft
+
+        "ArrowRight" ->
+            Just DpadRight
+
+        "ArrowUp" ->
+            Just DpadUp
+
+        "ArrowDown" ->
+            Just DpadDown
+
+        "W" ->
+            Just DpadUp
+
+        "A" ->
+            Just DpadLeft
+
+        "S" ->
+            Just DpadDown
+
+        "D" ->
+            Just DpadRight
+
+        "Space" ->
+            Just A
+
+        _ ->
+            Nothing
 
 
 init : Flags -> ( Model, Effect )
 init flags =
     let
+        hero : Hero
+        hero =
+            { position = { x = 0, y = 0 }
+            , waitTime = 0
+            , facingRight = True
+            }
+
         model : Model
         model =
-            { hero =
-                { position = { x = 0, y = 0 }
-                , waitTime = 0
-                }
+            { hero = hero
+            , keyboardPressed = []
             , now = flags.now
             , width = flags.width
             , height = flags.height
