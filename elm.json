@@ -7,6 +7,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "Gizra/elm-all-set": "1.0.1",
             "Orasund/pixelengine": "6.2.0",
             "avh4/elm-color": "1.0.0",
             "duncanmalashock/elm-music-theory": "1.0.0",
@@ -30,6 +31,7 @@
             "elm-community/result-extra": "2.4.0",
             "elm-explorations/test": "1.2.2",
             "lynn/elm-arithmetic": "3.0.0",
+            "pzp1997/assoc-list": "1.0.0",
             "rtfeldman/elm-css": "16.1.1",
             "rtfeldman/elm-hex": "1.0.0",
             "wernerdegroot/listzipper": "4.0.0"

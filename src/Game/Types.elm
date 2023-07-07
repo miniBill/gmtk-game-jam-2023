@@ -1,5 +1,6 @@
 module Game.Types exposing (Flags, Hero, Model, Position)
 
+import EverySet exposing (EverySet)
 import Gamepad exposing (Digital)
 import Time
 
@@ -13,7 +14,7 @@ type alias Flags =
 
 type alias Model =
     { hero : Hero
-    , keyboardPressed : List Digital
+    , keyboardPressed : EverySet Digital
     , now : Time.Posix
     , width : Float
     , height : Float
@@ -27,6 +28,7 @@ type alias Hero =
     , waitTime : Float
     , facingRight : Bool
     , moving : Bool
+    , attacking : Bool
     }
 
 

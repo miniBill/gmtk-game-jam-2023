@@ -5,7 +5,6 @@ import Browser.Dom
 import Game.Types as Game
 import Game.Update
 import Game.View
-import Gamepad
 import Gamepad.Simple
 import GamepadPort
 import Html exposing (Html)
@@ -66,13 +65,7 @@ gamepadConfig =
     { onAnimationFrame = \stuff -> GameMsg (Game.Update.onAnimationFrame stuff)
     , onBlob = GamepadPort.onBlob
     , saveToLocalStorage = GamepadPort.saveToLocalStorage
-    , controls =
-        [ ( "Up", Gamepad.DpadUp )
-        , ( "Down", Gamepad.DpadDown )
-        , ( "Left", Gamepad.DpadLeft )
-        , ( "Right", Gamepad.DpadRight )
-        , ( "Flip", Gamepad.A )
-        ]
+    , controls = Game.Update.controls
     }
 
 

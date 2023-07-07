@@ -1,6 +1,7 @@
-module Game.Update exposing (Msg, init, onAnimationFrame, subscriptions, time, update)
+module Game.Update exposing (Msg, controls, init, onAnimationFrame, subscriptions, time, update)
 
 import Browser.Events
+import EverySet
 import Game.Types exposing (Flags, Hero, Model, Position)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
@@ -25,10 +26,10 @@ update msg model =
                 fixed =
                     { frameStuff | dt = min 200 frameStuff.dt }
             in
-            { model
-                | now = fixed.timestamp
-            }
-                |> applyGamepadInput fixed
+            model
+                |> updateTimestamp fixed
+                |> updatePosition frameStuff
+                |> updateAttacking frameStuff
 
         Resize w h ->
             { model
@@ -37,59 +38,71 @@ update msg model =
             }
 
         KeyDown key ->
-            { model | keyboardPressed = key :: model.keyboardPressed }
+            { model | keyboardPressed = EverySet.insert key model.keyboardPressed }
 
         KeyUp key ->
-            { model | keyboardPressed = List.filter ((/=) key) model.keyboardPressed }
+            { model | keyboardPressed = EverySet.remove key model.keyboardPressed }
 
 
-applyGamepadInput : FrameStuff -> Model -> Model
-applyGamepadInput frameStuff model =
+updateAttacking : FrameStuff -> Model -> Model
+updateAttacking _ model =
+    model
+
+
+updateTimestamp : FrameStuff -> Model -> Model
+updateTimestamp frameStuff model =
+    { model
+        | now = frameStuff.timestamp
+    }
+
+
+updatePosition : FrameStuff -> Model -> Model
+updatePosition frameStuff model =
     let
-        onPress : Digital -> number -> number
-        onPress key value =
-            if
-                List.member key model.keyboardPressed
-                    || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
-            then
-                value
-
-            else
-                0
-
         hero : Hero
         hero =
             model.hero
-
-        newHero : Hero
-        newHero =
-            if hero.waitTime > 0 then
+    in
+    if hero.waitTime > 0 then
+        { model
+            | hero =
                 { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
+        }
 
-            else
-                let
-                    position : Position
-                    position =
-                        hero.position
+    else
+        let
+            onPress : Digital -> number
+            onPress key =
+                if isPressed key frameStuff model then
+                    1
 
-                    dx : number
-                    dx =
-                        onPress Gamepad.DpadLeft -1 + onPress Gamepad.DpadRight 1
+                else
+                    0
 
-                    newX : Int
-                    newX =
-                        (position.x + dx)
-                            |> clamp 0 (model.gameWidth - 1)
+            position : Position
+            position =
+                hero.position
 
-                    dy : number
-                    dy =
-                        onPress Gamepad.DpadUp -1 + onPress Gamepad.DpadDown 1
+            dx : number
+            dx =
+                onPress Gamepad.DpadRight - onPress Gamepad.DpadLeft
 
-                    newY : Int
-                    newY =
-                        (position.y + dy)
-                            |> clamp 0 (model.gameHeight - 1)
-                in
+            newX : Int
+            newX =
+                (position.x + dx)
+                    |> clamp 0 (model.gameWidth - 1)
+
+            dy : number
+            dy =
+                onPress Gamepad.DpadDown - onPress Gamepad.DpadUp
+
+            newY : Int
+            newY =
+                (position.y + dy)
+                    |> clamp 0 (model.gameHeight - 1)
+
+            newHero : Hero
+            newHero =
                 if newX /= position.x || newY /= position.y then
                     { hero
                         | position = { position | x = newX, y = newY }
@@ -100,8 +113,14 @@ applyGamepadInput frameStuff model =
 
                 else
                     { hero | moving = False }
-    in
-    { model | hero = newHero }
+        in
+        { model | hero = newHero }
+
+
+isPressed : Digital -> FrameStuff -> Model -> Bool
+isPressed key frameStuff model =
+    EverySet.member key model.keyboardPressed
+        || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
 
 
 actionsPerSecond : number
@@ -180,6 +199,7 @@ init flags =
             , waitTime = 0
             , facingRight = True
             , moving = False
+            , attacking = False
             }
 
         maxGameCells : number
@@ -191,7 +211,7 @@ init flags =
             floor <| sqrt (flags.width / flags.height * maxGameCells)
     in
     { hero = hero
-    , keyboardPressed = []
+    , keyboardPressed = EverySet.empty
     , now = flags.now
     , width = flags.width
     , height = flags.height
@@ -203,3 +223,13 @@ init flags =
 time : Model -> Time.Posix
 time { now } =
     now
+
+
+controls : List ( String, Gamepad.Digital )
+controls =
+    [ ( "Up", Gamepad.DpadUp )
+    , ( "Down", Gamepad.DpadDown )
+    , ( "Left", Gamepad.DpadLeft )
+    , ( "Right", Gamepad.DpadRight )
+    , ( "Flip", Gamepad.A )
+    ]
