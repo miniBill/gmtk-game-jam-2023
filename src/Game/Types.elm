@@ -1,4 +1,4 @@
-module Game exposing (Flags, Hero, Model, Position, time)
+module Game.Types exposing (Flags, Hero, Model, Position)
 
 import Gamepad exposing (Digital)
 import Time
@@ -34,8 +34,3 @@ type alias Position =
     { x : Int
     , y : Int
     }
-
-
-time : Model -> Time.Posix
-time { now } =
-    now

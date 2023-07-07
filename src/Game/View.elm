@@ -3,7 +3,7 @@ module Game.View exposing (view)
 import Color
 import Dungeon.Heroes.Knight
 import Fonts
-import Game exposing (Model, Position)
+import Game.Types exposing (Model, Position)
 import Html exposing (Html)
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)

@@ -1,10 +1,11 @@
-module Game.Update exposing (Msg, init, onAnimationFrame, subscriptions, update)
+module Game.Update exposing (Msg, init, onAnimationFrame, subscriptions, time, update)
 
 import Browser.Events
-import Game exposing (Flags, Hero, Model, Position)
+import Game.Types exposing (Flags, Hero, Model, Position)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
+import Time
 
 
 type Msg
@@ -45,7 +46,7 @@ update msg model =
 applyGamepadInput : FrameStuff -> Model -> Model
 applyGamepadInput frameStuff model =
     let
-        onPress : Gamepad.Digital -> number -> number
+        onPress : Digital -> number -> number
         onPress key value =
             if
                 List.member key model.keyboardPressed
@@ -197,3 +198,8 @@ init flags =
     , gameWidth = gameWidth
     , gameHeight = maxGameCells // gameWidth
     }
+
+
+time : Model -> Time.Posix
+time { now } =
+    now

@@ -2,7 +2,7 @@ port module Main exposing (Flags, Model, Msg, main)
 
 import Audio
 import Browser.Dom
-import Game
+import Game.Types as Game
 import Game.Update
 import Game.View
 import Gamepad
@@ -210,7 +210,7 @@ audio model =
     if model.focused && 1 == sqrt 2 then
         [ WebAudio.oscillator
             [ model.game
-                |> Game.time
+                |> Game.Update.time
                 |> Time.posixToMillis
                 |> (\t -> t // 1000)
                 |> modBy 8
