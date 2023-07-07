@@ -10,6 +10,6 @@
   },
   "scripts": {
     "start": "yarn build:prepare; concurrently \"yarn elm-watch hot\" \"cd dist; python -m http.server 8001\"",
-    "build:prepare": "yarn; mkdir -p dist; cp src/index.html src/favicon.svg src/*.js dist; yarn elm-codegen install; cp -r img dist/; ts-node ./scripts/generate.ts"
+    "build:prepare": "yarn; rm -rf dist/*; rm -rf generated/*; mkdir -p dist; cp src/index.html src/favicon.svg src/*.js dist; yarn elm-codegen install; cp -r img dist/; ts-node ./scripts/generate.ts"
   }
 }

@@ -9,6 +9,7 @@ import Image
 import Json.Decode
 import Json.Encode
 import List.Extra
+import String.Extra
 
 
 main : Program Json.Encode.Value () ()
@@ -25,7 +26,7 @@ main =
 
 
 type alias InputFile =
-    { directory : String
+    { directory : List String
     , filename : String
     , contents : String
     }
@@ -40,14 +41,14 @@ decodeFile =
                 splat =
                     String.split "/" path
 
-                directory : String
+                directory : List String
                 directory =
                     splat
                         |> List.drop 1
                         |> List.reverse
                         |> List.drop 1
                         |> List.reverse
-                        |> String.join "/"
+                        |> List.map String.Extra.classify
 
                 filename : String
                 filename =
@@ -65,14 +66,14 @@ decodeFile =
         (Json.Decode.field "contents" Json.Decode.string)
 
 
-directoryToGen : String -> List InputFile -> File
+directoryToGen : List String -> List InputFile -> File
 directoryToGen moduleName files =
     files
         |> List.filterMap (fileToGen moduleName)
-        |> Elm.file [ moduleName ]
+        |> Elm.file moduleName
 
 
-fileToGen : String -> InputFile -> Maybe Elm.Declaration
+fileToGen : List String -> InputFile -> Maybe Elm.Declaration
 fileToGen moduleName { filename, contents } =
     contents
         |> Base64.toBytes
@@ -88,7 +89,7 @@ fileToGen moduleName { filename, contents } =
                         Image.dimensions image
                 in
                 Elm.record
-                    [ ( "path", Elm.string <| moduleName ++ "/" ++ name ++ ".png" )
+                    [ ( "path", Elm.string <| String.join "/" (moduleName ++ [ name ++ ".png" ]) )
                     , ( "width", Elm.int width )
                     , ( "height", Elm.int height )
                     ]
