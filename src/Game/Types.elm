@@ -1,5 +1,6 @@
-module Game.Types exposing (Flags, Hero, Model, Position)
+module Game.Types exposing (Flags, Hero, Model, Position, Roll)
 
+import Dict exposing (Dict)
 import EverySet exposing (EverySet)
 import Gamepad exposing (Digital)
 import Set exposing (Set)
@@ -22,6 +23,12 @@ type alias Model =
     , gameWidth : Int
     , gameHeight : Int
     , walls : Set Position
+    , rolls : Dict Position Roll
+    }
+
+
+type alias Roll =
+    { reversed : Bool
     }
 
 

@@ -1,13 +1,15 @@
 module Game.Update exposing (Msg, controls, init, onAnimationFrame, subscriptions, time, update)
 
 import Browser.Events
+import Dict exposing (Dict)
 import EverySet
-import Game.Types exposing (Flags, Hero, Model, Position)
+import Game.Types exposing (Flags, Hero, Model, Position, Roll)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
 import Random exposing (Generator)
 import Random.Extra
+import Random.List
 import Set exposing (Set)
 import Time
 
@@ -67,8 +69,14 @@ update msg model =
 maybeReset : FrameStuff -> Model -> Model
 maybeReset frameStuff ({ hero } as model) =
     if isPressed A frameStuff model then
+        let
+            walls : Set Position
+            walls =
+                createWalls model.now model.gameWidth model.gameHeight
+        in
         { model
-            | walls = createWalls model.now model.gameWidth model.gameHeight
+            | walls = walls
+            , rolls = createRolls model.now model.gameWidth model.gameHeight walls
             , hero = { hero | position = ( 1, 1 ) }
         }
 
@@ -281,6 +289,10 @@ init flags =
         gameHeight : Int
         gameHeight =
             maxGameCells // gameWidth
+
+        walls : Set Position
+        walls =
+            createWalls flags.now gameWidth gameHeight
     in
     { hero = hero
     , keyboardPressed = EverySet.empty
@@ -289,8 +301,47 @@ init flags =
     , height = flags.height
     , gameWidth = gameWidth
     , gameHeight = gameHeight
-    , walls = createWalls flags.now gameWidth gameHeight
+    , walls = walls
+    , rolls = createRolls flags.now gameWidth gameHeight walls
     }
+
+
+createRolls : Time.Posix -> Int -> Int -> Set Position -> Dict Position Roll
+createRolls now gameWidth gameHeight walls =
+    let
+        all : Set Position
+        all =
+            List.range 1 (gameWidth - 1)
+                |> List.concatMap
+                    (\x ->
+                        List.range 1 (gameHeight - 1)
+                            |> List.map
+                                (\y ->
+                                    ( x, y )
+                                )
+                    )
+                |> Set.fromList
+
+        free : Set Position
+        free =
+            Set.diff all walls
+    in
+    Random.step
+        (Random.List.choices
+            (Set.size free // 10)
+            (Set.toList free)
+            |> Random.map
+                (\( picked, _ ) ->
+                    picked
+                        |> List.map
+                            (\position ->
+                                ( position, { reversed = False } )
+                            )
+                        |> Dict.fromList
+                )
+        )
+        (Random.initialSeed <| Time.posixToMillis now)
+        |> Tuple.first
 
 
 createWalls : Time.Posix -> Int -> Int -> Set Position
