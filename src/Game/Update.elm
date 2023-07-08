@@ -246,13 +246,67 @@ init flags =
     , gameWidth = gameWidth
     , gameHeight = gameHeight
     , walls =
-        (List.map (\x -> ( x, 0 )) (List.range 0 (gameWidth - 1))
-            ++ List.map (\x -> ( x, gameHeight - 1 )) (List.range 0 (gameWidth - 1))
-            ++ List.map (\y -> ( 0, y )) (List.range 0 (gameHeight - 1))
-            ++ List.map (\y -> ( gameWidth - 1, y )) (List.range 0 (gameHeight - 1))
-        )
+        createWalls flags.now gameWidth gameHeight
             |> Set.fromList
     }
+
+
+createWalls : Time.Posix -> Int -> Int -> List ( Int, Int )
+createWalls now gameWidth gameHeight =
+    let
+        topLeft : ( Int, Int )
+        topLeft =
+            ( 0, 0 )
+
+        topRight : ( Int, Int )
+        topRight =
+            ( gameWidth - 1, 0 )
+
+        bottomLeft : ( Int, Int )
+        bottomLeft =
+            ( 0, gameHeight - 1 )
+
+        bottomRight : ( Int, Int )
+        bottomRight =
+            ( gameWidth - 1, gameHeight - 1 )
+
+        topWall : List ( Int, Int )
+        topWall =
+            wall topLeft topRight
+
+        bottomWall : List ( Int, Int )
+        bottomWall =
+            wall bottomLeft bottomRight
+
+        leftWall : List ( Int, Int )
+        leftWall =
+            wall topLeft bottomLeft
+
+        rightWall : List ( Int, Int )
+        rightWall =
+            wall topRight bottomRight
+    in
+    topWall ++ bottomWall ++ leftWall ++ rightWall
+
+
+wall : ( Int, Int ) -> ( Int, Int ) -> List ( Int, Int )
+wall ( fromX, fromY ) ( toX, toY ) =
+    let
+        steps : Int
+        steps =
+            abs (toX - fromX) + abs (toY - fromY)
+
+        dx : Int
+        dx =
+            (toX - fromX) // steps
+
+        dy : Int
+        dy =
+            (toY - fromY) // steps
+    in
+    List.map
+        (\i -> ( fromX + i * dx, fromY + i * dy ))
+        (List.range 0 steps)
 
 
 time : Model -> Time.Posix
