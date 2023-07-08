@@ -9,7 +9,6 @@ import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
 import Random exposing (Generator)
 import Random.Extra
-import Random.List
 import Set exposing (Set)
 import Time
 
@@ -68,15 +67,14 @@ update msg model =
 
 maybeReset : FrameStuff -> Model -> Model
 maybeReset frameStuff ({ hero } as model) =
-    if isPressed A frameStuff model then
+    if isPressed Back frameStuff model then
         let
-            walls : Set Position
-            walls =
+            ( walls, rooms ) =
                 createWalls model.now model.gameWidth model.gameHeight
         in
         { model
             | walls = walls
-            , rolls = createRolls model.now model.gameWidth model.gameHeight walls
+            , rolls = createRolls model.now rooms
             , hero = { hero | position = ( 1, 1 ) }
         }
 
@@ -290,8 +288,7 @@ init flags =
         gameHeight =
             maxGameCells // gameWidth
 
-        walls : Set Position
-        walls =
+        ( walls, rooms ) =
             createWalls flags.now gameWidth gameHeight
     in
     { hero = hero
@@ -302,49 +299,41 @@ init flags =
     , gameWidth = gameWidth
     , gameHeight = gameHeight
     , walls = walls
-    , rolls = createRolls flags.now gameWidth gameHeight walls
+    , rolls = createRolls flags.now rooms
     }
 
 
-createRolls : Time.Posix -> Int -> Int -> Set Position -> Dict Position Roll
-createRolls now gameWidth gameHeight walls =
+createRolls : Time.Posix -> List Room -> Dict Position Roll
+createRolls now rooms =
     let
-        all : Set Position
-        all =
-            List.range 1 (gameWidth - 1)
-                |> List.concatMap
-                    (\x ->
-                        List.range 1 (gameHeight - 1)
-                            |> List.map
-                                (\y ->
-                                    ( x, y )
-                                )
-                    )
-                |> Set.fromList
+        randomRoll : Room -> Generator ( Position, Roll )
+        randomRoll room =
+            let
+                ( minX, minY ) =
+                    room.topLeft
 
-        free : Set Position
-        free =
-            Set.diff all walls
+                ( maxX, maxY ) =
+                    room.bottomRight
+            in
+            Random.map2
+                (\x y -> ( ( x, y ), { reversed = False } ))
+                (Random.int (minX + 1) (maxX - 1))
+                (Random.int (minY + 1) (maxY - 1))
+
+        generator : Generator (Dict Position Roll)
+        generator =
+            rooms
+                |> List.map randomRoll
+                |> Random.Extra.sequence
+                |> Random.map
+                    Dict.fromList
     in
-    Random.step
-        (Random.List.choices
-            (Set.size free // 10)
-            (Set.toList free)
-            |> Random.map
-                (\( picked, _ ) ->
-                    picked
-                        |> List.map
-                            (\position ->
-                                ( position, { reversed = False } )
-                            )
-                        |> Dict.fromList
-                )
-        )
+    Random.step generator
         (Random.initialSeed <| Time.posixToMillis now)
         |> Tuple.first
 
 
-createWalls : Time.Posix -> Int -> Int -> Set Position
+createWalls : Time.Posix -> Int -> Int -> ( Set Position, List Room )
 createWalls now gameWidth gameHeight =
     let
         topLeft : Position
@@ -386,8 +375,7 @@ createWalls now gameWidth gameHeight =
                 |> Set.union leftWall
                 |> Set.union rightWall
 
-        internalWalls : Set Position
-        internalWalls =
+        ( internalWalls, rooms ) =
             Random.step
                 (wallGenerator topLeft bottomRight
                     |> Random.andThen (openDoors bottomRight)
@@ -395,21 +383,27 @@ createWalls now gameWidth gameHeight =
                 (Random.initialSeed <| Time.posixToMillis now)
                 |> Tuple.first
     in
-    Set.union outerWalls internalWalls
+    ( Set.union outerWalls internalWalls, rooms )
 
 
-openDoors : Position -> ( Set Position, List Room ) -> Generator (Set Position)
+openDoors : Position -> ( Set Position, List Room ) -> Generator ( Set Position, List Room )
 openDoors bottomRight ( walls, rooms ) =
-    case rooms of
-        [] ->
-            Random.constant walls
+    let
+        go : ( Set Position, List Room ) -> Generator (Set Position)
+        go ( currentWalls, queue ) =
+            case queue of
+                [] ->
+                    Random.constant currentWalls
 
-        room :: tail ->
-            openDoor bottomRight room walls
-                |> Random.andThen
-                    (\newWalls ->
-                        openDoors bottomRight ( newWalls, tail )
-                    )
+                room :: tail ->
+                    openDoor bottomRight room currentWalls
+                        |> Random.andThen
+                            (\newWalls ->
+                                go ( newWalls, tail )
+                            )
+    in
+    go ( walls, rooms )
+        |> Random.map (\newWalls -> ( newWalls, rooms ))
 
 
 openDoor : Position -> Room -> Set Position -> Generator (Set Position)
@@ -578,11 +572,12 @@ time { now } =
     now
 
 
-controls : List ( String, Gamepad.Digital )
+controls : List ( String, Digital )
 controls =
-    [ ( "Up", Gamepad.DpadUp )
-    , ( "Down", Gamepad.DpadDown )
-    , ( "Left", Gamepad.DpadLeft )
-    , ( "Right", Gamepad.DpadRight )
-    , ( "Flip", Gamepad.A )
+    [ ( "Up", DpadUp )
+    , ( "Down", DpadDown )
+    , ( "Left", DpadLeft )
+    , ( "Right", DpadRight )
+    , ( "Flip", A )
+    , ( "Reset", Back )
     ]

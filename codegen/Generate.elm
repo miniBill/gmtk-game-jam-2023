@@ -101,17 +101,33 @@ fileToGen moduleName { filename, contents } =
 
                             else
                                 16
+
+                        widthInTiles : Int
+                        widthInTiles =
+                            width // size
+
+                        heightInTiles : Int
+                        heightInTiles =
+                            height // size
                     in
-                    Elm.record
-                        [ ( "tileset"
-                          , Gen.PixelEngine.Tile.tileset
-                                { source = "img/" ++ path
-                                , spriteWidth = size
-                                , spriteHeight = size
-                                }
-                          )
-                        , ( "widthInTiles", Elm.int (width // size) )
-                        ]
+                    if widthInTiles == 1 && heightInTiles == 1 then
+                        Gen.PixelEngine.Tile.tileset
+                            { source = "img/" ++ path
+                            , spriteWidth = size
+                            , spriteHeight = size
+                            }
+
+                    else
+                        Elm.record
+                            [ ( "tileset"
+                              , Gen.PixelEngine.Tile.tileset
+                                    { source = "img/" ++ path
+                                    , spriteWidth = size
+                                    , spriteHeight = size
+                                    }
+                              )
+                            , ( "widthInTiles", Elm.int widthInTiles )
+                            ]
 
                 else
                     Elm.record

@@ -1,10 +1,12 @@
 module Game.View exposing (view)
 
 import Color
+import Dict
 import Dungeon.Heroes.Knight
+import Dungeon.PropsItens
 import Dungeon.Tiles.Wall
 import Fonts
-import Game.Types exposing (Model, Position)
+import Game.Types exposing (Model, Position, Roll)
 import Html exposing (Html)
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
@@ -28,9 +30,30 @@ view model =
             { height = toFloat model.gameHeight * tileSize
             , background = PixelEngine.colorBackground Color.blue
             }
-            (viewHero model :: viewWalls model)
+            (viewHero model :: viewRolls model ++ viewWalls model)
         , viewStatusMessage model
         ]
+
+
+viewRolls : Model -> List ( ( Float, Float ), Image msg )
+viewRolls model =
+    model.rolls
+        |> Dict.toList
+        |> List.map viewRoll
+
+
+viewRoll : ( Position, Roll ) -> ( ( Float, Float ), Image msg )
+viewRoll ( position, roll ) =
+    ( toFloatPosition position
+    , Image.fromTile
+        (Tile.fromPosition ( 0, 0 ))
+        (if roll.reversed then
+            Dungeon.PropsItens.flagGreen
+
+         else
+            Dungeon.PropsItens.flagRed
+        )
+    )
 
 
 viewWalls : Model -> List ( ( Float, Float ), Image msg )
@@ -45,7 +68,7 @@ viewWall position =
     ( toFloatPosition position
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 ))
-        Dungeon.Tiles.Wall.wall1.tileset
+        Dungeon.Tiles.Wall.wall1
     )
 
 
