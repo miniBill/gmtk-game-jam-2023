@@ -17,6 +17,11 @@
   - Sneaky
   - Spotted
 - You got spotted
-- You flipped some toilet paper
+- You flipped a roll
 - You won
 - You got caught
+
+# Making a spritesheet
+
+- `montage sprite_* -tile 6x1 -geometry '16x16+0+0' -background None spritesheet.png`
+- `convert spritesheet.png -flop spritesheet_flipped.png`
