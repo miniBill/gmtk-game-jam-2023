@@ -16,6 +16,11 @@ import Set
 import String.Extra
 
 
+tileSize : number
+tileSize =
+    16
+
+
 view : Model -> Html msg
 view model =
     PixelEngine.toHtml
@@ -26,7 +31,8 @@ view model =
                 |> Options.withAnimationFPS 10
                 |> Just
         }
-        [ PixelEngine.imageArea
+        [ viewTopBar model
+        , PixelEngine.imageArea
             { height = toFloat model.gameHeight * tileSize
             , background = PixelEngine.colorBackground Color.blue
             }
@@ -72,6 +78,30 @@ viewWall position =
     )
 
 
+viewTopBar : Model -> PixelEngine.Area msg
+viewTopBar model =
+    topBar model
+        |> Tile.fromText ( 0, 0 )
+        |> List.indexedMap
+            (\column tile ->
+                ( ( column
+                  , 0
+                  )
+                , tile
+                )
+            )
+        |> PixelEngine.tiledArea
+            { rows = 1
+            , tileset = textTileset
+            , background = PixelEngine.colorBackground Color.white
+            }
+
+
+topBar : Model -> String
+topBar model =
+    "Level " ++ String.fromInt model.level
+
+
 viewStatusMessage : Model -> PixelEngine.Area msg
 viewStatusMessage model =
     let
@@ -81,7 +111,7 @@ viewStatusMessage model =
     in
     statusMessage model
         |> String.Extra.softBreak charsPerLine
-        |> List.take textHeight
+        |> List.take statusMessageHeight
         |> List.map (Tile.fromText ( 0, 0 ))
         |> List.indexedMap
             (\row tiles ->
@@ -97,7 +127,7 @@ viewStatusMessage model =
             )
         |> List.concat
         |> PixelEngine.tiledArea
-            { rows = textHeight * 2
+            { rows = statusMessageHeight + 2
             , tileset = textTileset
             , background = PixelEngine.colorBackground Color.white
             }
@@ -124,7 +154,7 @@ maxScale model =
         maxScaleHeight =
             (model.height - 2 * borderWidth)
                 / ((toFloat model.gameHeight * tileSize)
-                    + ((textHeight + 2) * toFloat textTileset.spriteHeight)
+                    + ((statusMessageHeight + 2) * toFloat textTileset.spriteHeight)
                   )
 
         maxScaleMin : Float
@@ -159,13 +189,13 @@ viewHero model =
     in
     viewAnimated
         { spritesheet = spritesheet
-        , position = model.hero.position
+        , position = model.heroPosition
         , key = "hero"
         }
 
 
-textHeight : number
-textHeight =
+statusMessageHeight : number
+statusMessageHeight =
     2
 
 
@@ -191,8 +221,3 @@ toFloatPosition ( x, y ) =
     ( toFloat <| tileSize * x
     , toFloat <| tileSize * y
     )
-
-
-tileSize : number
-tileSize =
-    16

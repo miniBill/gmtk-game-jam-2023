@@ -51,7 +51,7 @@ update msg model =
                 |> updatePosition frameStuff
                 |> updateReversing frameStuff
                 |> maybeReset frameStuff
-                |> moveKeyboardPressedToPrevious
+                |> moveToPrevious
 
         Resize w h ->
             { model
@@ -66,46 +66,133 @@ update msg model =
             { model | keyboardPressed = EverySet.remove key model.keyboardPressed }
 
 
-moveKeyboardPressedToPrevious : Model -> Model
-moveKeyboardPressedToPrevious model =
-    { model | previousKeyboardPressed = model.keyboardPressed }
+moveToPrevious : Model -> Model
+moveToPrevious model =
+    { model
+        | previous =
+            { keyboardPressed = model.keyboardPressed
+            , heroPosition = model.heroPosition
+            }
+    }
 
 
 maybeReset : FrameStuff -> Model -> Model
-maybeReset frameStuff ({ hero } as model) =
+maybeReset frameStuff model =
     if isPressed Back frameStuff model then
-        let
-            ( walls, rooms ) =
-                createWalls model.now model.gameWidth model.gameHeight
-        in
-        { model
-            | walls = walls
-            , rolls = createRolls model.now rooms
-            , hero = { hero | position = ( 1, 1 ) }
-        }
+        regen model
 
     else
         model
 
 
-updateReversing : FrameStuff -> Model -> Model
-updateReversing frameStuff model =
-    case Dict.get model.hero.position model.rolls of
-        Nothing ->
-            model
+regen : Model -> Model
+regen model =
+    let
+        ( walls, rooms ) =
+            createWalls model.now model.gameWidth model.gameHeight
+    in
+    { model
+        | walls = walls
+        , rolls = createRolls model.now rooms
+        , heroPosition = ( 1, 1 )
+    }
 
-        Just roll ->
-            if wasReleased A frameStuff model then
-                { model
-                    | rolls =
-                        Dict.insert
-                            model.hero.position
-                            { roll | reversed = not roll.reversed }
-                            model.rolls
-                }
+
+updateReversing : FrameStuff -> Model -> Model
+updateReversing _ model =
+    let
+        tryFlip : Position -> Dict Position Roll -> Dict Position Roll
+        tryFlip position rolls =
+            case
+                Dict.get position rolls
+            of
+                Just roll ->
+                    Dict.insert
+                        position
+                        { roll | reversed = True }
+                        rolls
+
+                _ ->
+                    rolls
+
+        diagonals : Maybe ( Position, Position )
+        diagonals =
+            let
+                ( currX, currY ) =
+                    model.heroPosition
+
+                ( prevX, prevY ) =
+                    model.previous.heroPosition
+            in
+            if currX /= prevX && currY /= prevY then
+                Just ( ( prevX, currY ), ( currX, prevY ) )
 
             else
-                model
+                Nothing
+
+        normalFlip : Dict Position Roll
+        normalFlip =
+            case diagonals of
+                Nothing ->
+                    model.rolls
+                        |> tryFlip model.heroPosition
+
+                Just ( diag1, diag2 ) ->
+                    model.rolls
+                        |> tryFlip model.heroPosition
+                        |> tryFlip diag1
+                        |> tryFlip diag2
+
+        newModel : Model
+        newModel =
+            { model
+                | rolls =
+                    normalFlip
+            }
+    in
+    if
+        List.all
+            (\( _, { reversed } ) -> reversed)
+            (Dict.toList newModel.rolls)
+    then
+        toLevel (model.level + 1) newModel
+
+    else
+        newModel
+
+
+toLevel : Int -> Model -> Model
+toLevel level model =
+    let
+        diff : Int
+        diff =
+            level - model.level
+    in
+    (if model.gameWidth > model.gameHeight then
+        { model
+            | level = level
+            , gameWidth = model.gameWidth + diff
+            , gameHeight =
+                (toFloat (model.gameWidth + diff)
+                    * model.height
+                    / model.width
+                )
+                    |> floor
+        }
+
+     else
+        { model
+            | level = level
+            , gameHeight = model.gameHeight + diff
+            , gameWidth =
+                (toFloat (model.gameHeight + diff)
+                    * model.width
+                    / model.height
+                )
+                    |> floor
+        }
+    )
+        |> regen
 
 
 updateTimestamp : FrameStuff -> Model -> Model
@@ -138,17 +225,13 @@ updatePosition frameStuff model =
                 else
                     0
 
-            position : Position
-            position =
-                hero.position
-
             positionX : Int
             positionX =
-                Tuple.first position
+                Tuple.first model.heroPosition
 
             positionY : Int
             positionY =
-                Tuple.second position
+                Tuple.second model.heroPosition
 
             dx : number
             dx =
@@ -168,10 +251,9 @@ updatePosition frameStuff model =
                 (positionY + dy)
                     |> clamp 0 (model.gameHeight - 1)
 
-            newHero : Hero
-            newHero =
+            ( newHero, newPosition ) =
                 if newX == positionX && newY == positionY then
-                    { hero | moving = False }
+                    ( { hero | moving = False }, model.heroPosition )
 
                 else
                     let
@@ -179,8 +261,8 @@ updatePosition frameStuff model =
                         free posX posY =
                             not (Set.member ( posX, posY ) model.walls)
 
-                        newPosition : Position
-                        newPosition =
+                        newPos : Position
+                        newPos =
                             if free newX newY then
                                 ( newX, newY )
 
@@ -191,25 +273,29 @@ updatePosition frameStuff model =
                                 ( positionX, newY )
 
                             else
-                                position
+                                model.heroPosition
                     in
-                    if position == newPosition then
-                        hero
+                    if model.heroPosition == newPos then
+                        ( hero, model.heroPosition )
 
                     else
                         let
                             newPositionX : Int
                             newPositionX =
-                                Tuple.first newPosition
+                                Tuple.first newPos
                         in
-                        { hero
-                            | position = newPosition
-                            , facingRight = newPositionX - positionX > 0
+                        ( { hero
+                            | facingRight = newPositionX - positionX > 0
                             , waitTime = 1000 / actionsPerSecond
                             , moving = True
-                        }
+                          }
+                        , newPos
+                        )
         in
-        { model | hero = newHero }
+        { model
+            | hero = newHero
+            , heroPosition = newPosition
+        }
 
 
 isPressed : Digital -> FrameStuff -> Model -> Bool
@@ -220,7 +306,7 @@ isPressed key frameStuff model =
 
 wasReleased : Digital -> FrameStuff -> Model -> Bool
 wasReleased key frameStuff model =
-    (EverySet.member key model.previousKeyboardPressed
+    (EverySet.member key model.previous.keyboardPressed
         && not (EverySet.member key model.keyboardPressed)
     )
         || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
@@ -298,8 +384,7 @@ init flags =
     let
         hero : Hero
         hero =
-            { position = ( 1, 1 )
-            , waitTime = 0
+            { waitTime = 0
             , facingRight = True
             , moving = False
             , attacking = False
@@ -307,7 +392,7 @@ init flags =
 
         maxGameCells : number
         maxGameCells =
-            360
+            100
 
         gameWidth : Int
         gameWidth =
@@ -321,8 +406,12 @@ init flags =
             createWalls flags.now gameWidth gameHeight
     in
     { hero = hero
+    , heroPosition = ( 1, 1 )
     , keyboardPressed = EverySet.empty
-    , previousKeyboardPressed = EverySet.empty
+    , previous =
+        { heroPosition = ( 1, 1 )
+        , keyboardPressed = EverySet.empty
+        }
     , now = flags.now
     , width = flags.width
     , height = flags.height
@@ -330,6 +419,7 @@ init flags =
     , gameHeight = gameHeight
     , walls = walls
     , rolls = createRolls flags.now rooms
+    , level = 1
     }
 
 
@@ -353,6 +443,7 @@ createRolls now rooms =
         generator : Generator (Dict Position Roll)
         generator =
             rooms
+                |> List.filter (\room -> room.topLeft /= ( 0, 0 ))
                 |> List.map randomRoll
                 |> Random.Extra.sequence
                 |> Random.map

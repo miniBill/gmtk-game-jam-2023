@@ -16,8 +16,12 @@ type alias Flags =
 
 type alias Model =
     { hero : Hero
+    , heroPosition : Position
     , keyboardPressed : EverySet Digital
-    , previousKeyboardPressed : EverySet Digital
+    , previous :
+        { heroPosition : Position
+        , keyboardPressed : EverySet Digital
+        }
     , now : Time.Posix
     , width : Float
     , height : Float
@@ -25,6 +29,7 @@ type alias Model =
     , gameHeight : Int
     , walls : Set Position
     , rolls : Dict Position Roll
+    , level : Int
     }
 
 
@@ -34,8 +39,7 @@ type alias Roll =
 
 
 type alias Hero =
-    { position : Position
-    , waitTime : Float
+    { waitTime : Float
     , facingRight : Bool
     , moving : Bool
     , attacking : Bool
