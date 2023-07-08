@@ -68,14 +68,12 @@ viewRolls model =
 viewRoll : ( Position, Roll ) -> ( ( Float, Float ), Image msg )
 viewRoll ( position, roll ) =
     ( toFloatPosition position
-    , Image.fromTile
-        (Tile.fromPosition ( 0, 0 ))
-        (if roll.reversed then
-            Dungeon.ToiletPaper.toiletPaperSmallFlipped
+    , Image.fromSrc <|
+        if roll.reversed then
+            Sprites.rollOver
 
-         else
-            Dungeon.ToiletPaper.toiletPaperSmall
-        )
+        else
+            Sprites.rollUnder
     )
 
 

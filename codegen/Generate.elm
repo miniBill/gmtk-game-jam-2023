@@ -159,11 +159,8 @@ fileToGen moduleName { filename, contents } =
                 )
 
     else if String.endsWith ".svg" filename then
-        Gen.PixelEngine.Tile.tileset
-            { source = "img/" ++ path
-            , spriteWidth = 16
-            , spriteHeight = 16
-            }
+        ("img/" ++ path)
+            |> Elm.string
             |> Elm.declaration (String.Extra.camelize name)
             |> Elm.expose
             |> Just
