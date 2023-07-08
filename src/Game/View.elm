@@ -78,6 +78,9 @@ view model =
                     ++ String.fromInt level
                     ++ " before dying a horrible, horrible death"
 
+        _ ->
+            Debug.todo "Pause/Won"
+
 
 viewRolls : PlayingModel -> List ( ( Float, Float ), Image msg )
 viewRolls model =
@@ -135,7 +138,11 @@ viewTopBar model =
 
 topBar : PlayingModel -> String
 topBar model =
-    "Level " ++ String.fromInt model.level
+    "Level "
+        ++ String.fromInt model.level
+        ++ " - panic "
+        ++ String.padLeft 3 ' ' (String.fromInt <| round <| model.panicLevel * 100)
+        ++ "%"
 
 
 viewStatusMessage : PlayingModel -> PixelEngine.Area msg

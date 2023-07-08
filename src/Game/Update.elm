@@ -114,6 +114,12 @@ update msg model =
         ( Loaded key (Ok source), _ ) ->
             { model | sources = Dict.insert key source model.sources }
 
+        ( _, Pause _ ) ->
+            Debug.todo "Pause"
+
+        ( _, Won _ ) ->
+            Debug.todo "Won"
+
 
 moveToPrevious : PlayingModel -> PlayingModel
 moveToPrevious model =
@@ -136,6 +142,12 @@ maybeReset frameStuff model playingModel =
 
     else if wasReleased Gamepad.A frameStuff playingModel then
         toLevel (playingModel.level + 1) model playingModel
+
+    else if wasReleased Gamepad.Y frameStuff playingModel then
+        { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }
+
+    else if wasReleased Gamepad.X frameStuff playingModel then
+        { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }
 
     else
         playingModel
@@ -432,6 +444,12 @@ toDigital string =
         "d" ->
             Just Gamepad.DpadRight
 
+        "q" ->
+            Just Gamepad.X
+
+        "e" ->
+            Just Gamepad.Y
+
         " " ->
             Just Gamepad.A
 
@@ -451,7 +469,7 @@ init : Flags -> ( Model, AudioCmd Msg )
 init flags =
     ( { now = flags.now
       , startTime = flags.now
-      , effects = []
+      , effects = [ ( AudioSources.Music.menuIntro, flags.now ) ]
       , width = flags.width
       , height = flags.height
       , sources = Dict.empty
@@ -778,8 +796,8 @@ controls =
     , ( "Right", Gamepad.DpadRight )
     , ( "Flip", Gamepad.A )
     , ( "Reset", Gamepad.Back )
-    , ( "Panic up", Gamepad.X )
-    , ( "Panic down", Gamepad.Y )
+    , ( "Panic up", Gamepad.Y )
+    , ( "Panic down", Gamepad.X )
     ]
 
 
@@ -793,29 +811,17 @@ audio model =
 
         tracks : List Audio
         tracks =
-            case model.inner of
-                Menu _ ->
-                    [ effect model AudioSources.Music.menuIntro model.startTime
-                        |> Audio.scaleVolume 1
-                    , music model AudioSources.Music.base musicAt
-                        |> Audio.scaleVolume 1
-                    , music model AudioSources.Music.menu musicAt
-                        |> Audio.scaleVolume 1
-                    ]
-
-                Playing _ ->
-                    [ music model AudioSources.Music.base musicAt
-                        |> Audio.scaleVolume 1
-                    , music model AudioSources.Music.sneaky musicAt
-                        |> Audio.scaleVolume 1
-                    , music model AudioSources.Music.chase musicAt
-                        |> Audio.scaleVolume 0
-                    , music model AudioSources.Music.panic musicAt
-                        |> Audio.scaleVolume 0
-                    ]
-
-                Lost _ ->
-                    []
+            [ ( AudioSources.Music.base, baseVolume )
+            , ( AudioSources.Music.sneaky, sneakyVolume )
+            , ( AudioSources.Music.chase, chaseVolume )
+            , ( AudioSources.Music.panic, panicVolume )
+            , ( AudioSources.Music.menu, menuVolume )
+            ]
+                |> List.map
+                    (\( key, volume ) ->
+                        music model key musicAt
+                            |> Audio.scaleVolume (volume model.inner)
+                    )
 
         effects : List Audio
         effects =
@@ -871,3 +877,71 @@ music model key at =
 loadAudio : String -> AudioCmd Msg
 loadAudio key =
     Audio.loadAudio (Loaded key) <| "/audio/" ++ key
+
+
+baseVolume : InnerModel -> Float
+baseVolume gameState =
+    case gameState of
+        Menu _ ->
+            1
+
+        Playing _ ->
+            1
+
+        Lost _ ->
+            0
+
+        Pause _ ->
+            0
+
+        Won _ ->
+            0.25
+
+
+sneakyVolume : InnerModel -> Float
+sneakyVolume gameState =
+    case gameState of
+        Menu _ ->
+            0
+
+        Playing { panicLevel } ->
+            clamp 0 1 (panicLevel * -3 + 1)
+
+        Lost _ ->
+            0
+
+        Pause _ ->
+            1
+
+        Won _ ->
+            0.25
+
+
+chaseVolume : InnerModel -> Float
+chaseVolume gameState =
+    case gameState of
+        Playing { panicLevel } ->
+            clamp 0 1 (panicLevel * 3 - 0.5)
+
+        _ ->
+            0
+
+
+panicVolume : InnerModel -> Float
+panicVolume gameState =
+    case gameState of
+        Playing { panicLevel } ->
+            clamp 0 1 (panicLevel * 2.5 - 1.25)
+
+        _ ->
+            0
+
+
+menuVolume : InnerModel -> Float
+menuVolume gameState =
+    case gameState of
+        Menu _ ->
+            1
+
+        _ ->
+            0

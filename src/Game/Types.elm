@@ -34,6 +34,8 @@ type InnerModel
         { level : Int
         , sources : Dict String Source
         }
+    | Pause PlayingModel
+    | Won PlayingModel
 
 
 type Msg
