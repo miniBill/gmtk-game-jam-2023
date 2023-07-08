@@ -2,12 +2,13 @@ module Game.View exposing (view)
 
 import Color
 import Dict
-import Dungeon.Heroes.Knight
 import Dungeon.PropsItens
 import Dungeon.Tiles.Wall
 import Fonts
 import Game.Types exposing (Model, Position, Roll)
 import Html exposing (Html)
+import LittleMummy.Idle
+import LittleMummy.Walk
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
@@ -199,16 +200,16 @@ viewHero model =
         spritesheet =
             if model.hero.moving then
                 if model.hero.facingRight then
-                    Dungeon.Heroes.Knight.knightRunSpritesheet
+                    LittleMummy.Walk.spritesheetFlipped
 
                 else
-                    Dungeon.Heroes.Knight.knightRunSpritesheetFlipped
+                    LittleMummy.Walk.spritesheet
 
             else if model.hero.facingRight then
-                Dungeon.Heroes.Knight.knightIdleSpritesheet
+                LittleMummy.Idle.spritesheetFlipped
 
             else
-                Dungeon.Heroes.Knight.knightIdleSpritesheetFlipped
+                LittleMummy.Idle.spritesheet
     in
     viewAnimated
         { spritesheet = spritesheet
