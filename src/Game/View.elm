@@ -3,7 +3,6 @@ module Game.View exposing (view)
 import Color
 import Dict
 import Dungeon.Tiles.Wall
-import Dungeon.ToiletPaper
 import Fonts
 import Game.Types exposing (Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Html exposing (Html)
@@ -15,6 +14,7 @@ import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
 import PixelEngine.Tile as Tile exposing (Tileset)
 import Set
+import Sprites
 import String.Extra
 
 

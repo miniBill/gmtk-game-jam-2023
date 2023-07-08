@@ -90,67 +90,86 @@ fileToGen moduleName { filename, contents } =
             toName filename
 
         path =
-            String.join "/" (moduleName ++ [ name ++ ".png" ])
+            String.join "/" (moduleName ++ [ filename ])
     in
-    contents
-        |> Base64.toBytes
-        |> Maybe.andThen Image.decode
-        |> Maybe.map
-            (\image ->
-                let
-                    { width, height } =
-                        Image.dimensions image
-                in
-                if List.member "Dungeon" moduleName || List.member "Fonts" moduleName || String.contains "spritesheet" name then
+    if String.endsWith ".png" filename then
+        contents
+            |> Base64.toBytes
+            |> Maybe.andThen Image.decode
+            |> Maybe.map
+                (\image ->
                     let
-                        size : number
-                        size =
-                            if String.contains "8x8" name then
-                                8
-
-                            else
-                                16
-
-                        widthInTiles : Int
-                        widthInTiles =
-                            width // size
-
-                        heightInTiles : Int
-                        heightInTiles =
-                            height // size
+                        { width, height } =
+                            Image.dimensions image
                     in
-                    if widthInTiles == 1 && heightInTiles == 1 then
-                        Gen.PixelEngine.Tile.tileset
-                            { source = "img/" ++ path
-                            , spriteWidth = size
-                            , spriteHeight = size
-                            }
+                    if
+                        List.member "Dungeon" moduleName
+                            || List.member "Fonts" moduleName
+                            || List.member "Sprites" moduleName
+                            || String.contains "spritesheet" name
+                    then
+                        let
+                            size : number
+                            size =
+                                if String.contains "8x8" name then
+                                    8
+
+                                else
+                                    16
+
+                            widthInTiles : Int
+                            widthInTiles =
+                                width // size
+
+                            heightInTiles : Int
+                            heightInTiles =
+                                height // size
+                        in
+                        if widthInTiles == 1 && heightInTiles == 1 then
+                            Gen.PixelEngine.Tile.tileset
+                                { source = "img/" ++ path
+                                , spriteWidth = size
+                                , spriteHeight = size
+                                }
+
+                        else
+                            Elm.record
+                                [ ( "tileset"
+                                  , Gen.PixelEngine.Tile.tileset
+                                        { source = "img/" ++ path
+                                        , spriteWidth = size
+                                        , spriteHeight = size
+                                        }
+                                  )
+                                , ( "widthInTiles", Elm.int widthInTiles )
+                                ]
 
                     else
                         Elm.record
-                            [ ( "tileset"
-                              , Gen.PixelEngine.Tile.tileset
-                                    { source = "img/" ++ path
-                                    , spriteWidth = size
-                                    , spriteHeight = size
-                                    }
-                              )
-                            , ( "widthInTiles", Elm.int widthInTiles )
+                            [ ( "path", Elm.string path )
+                            , ( "width", Elm.int width )
+                            , ( "height", Elm.int height )
                             ]
+                )
+            |> Maybe.map
+                (\value ->
+                    value
+                        |> Elm.declaration (String.Extra.camelize name)
+                        |> Elm.expose
+                )
 
-                else
-                    Elm.record
-                        [ ( "path", Elm.string path )
-                        , ( "width", Elm.int width )
-                        , ( "height", Elm.int height )
-                        ]
-            )
-        |> Maybe.map
-            (\value ->
-                value
-                    |> Elm.declaration (String.Extra.camelize name)
-                    |> Elm.expose
-            )
+    else if String.endsWith ".svg" filename then
+        Gen.PixelEngine.Tile.tileset
+            { source = "img/" ++ path
+            , spriteWidth = 16
+            , spriteHeight = 16
+            }
+            |> Elm.declaration (String.Extra.camelize name)
+            |> Elm.expose
+            |> Just
+
+    else
+        Nothing
 
 
 toName : String -> String
