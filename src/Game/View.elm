@@ -92,9 +92,9 @@ viewTopBar model =
                 )
             )
         |> PixelEngine.tiledArea
-            { rows = 1
+            { rows = 2
             , tileset = textTileset
-            , background = PixelEngine.colorBackground Color.white
+            , background = PixelEngine.colorBackground Color.black
             }
 
 
@@ -108,7 +108,7 @@ viewStatusMessage model =
     let
         charsPerLine : Int
         charsPerLine =
-            model.gameWidth * tileSize // textTileset.spriteHeight - 2
+            model.gameWidth * tileSize // textTileset.spriteHeight
     in
     statusMessage model
         |> String.Extra.softBreak charsPerLine
@@ -118,7 +118,7 @@ viewStatusMessage model =
             (\row tiles ->
                 List.indexedMap
                     (\column tile ->
-                        ( ( 1 + column
+                        ( ( column
                           , 1 + row
                           )
                         , tile
@@ -128,9 +128,9 @@ viewStatusMessage model =
             )
         |> List.concat
         |> PixelEngine.tiledArea
-            { rows = statusMessageHeight + 2
+            { rows = statusMessageHeight + 1
             , tileset = textTileset
-            , background = PixelEngine.colorBackground Color.white
+            , background = PixelEngine.colorBackground Color.black
             }
 
 
@@ -190,7 +190,7 @@ maxScale model =
 
 textTileset : Tileset
 textTileset =
-    Fonts.berlin8x8.tileset
+    Fonts.berlin8x8white.tileset
 
 
 viewHero : Model -> ( ( Float, Float ), Image msg )
