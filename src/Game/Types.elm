@@ -1,4 +1,4 @@
-module Game.Types exposing (Flags, Hero, Model, Position, Roll)
+module Game.Types exposing (Flags, Hero, Model, Position, Roll, actionsPerSecond)
 
 import Dict exposing (Dict)
 import EverySet exposing (EverySet)
@@ -48,3 +48,8 @@ type alias Hero =
 
 type alias Position =
     ( Int, Int )
+
+
+actionsPerSecond : number
+actionsPerSecond =
+    4

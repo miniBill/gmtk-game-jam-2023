@@ -2,10 +2,10 @@ module Game.View exposing (view)
 
 import Color
 import Dict
-import Dungeon.PropsItens
 import Dungeon.Tiles.Wall
+import Dungeon.ToiletPaper
 import Fonts
-import Game.Types exposing (Model, Position, Roll)
+import Game.Types exposing (Model, Position, Roll, actionsPerSecond)
 import Html exposing (Html)
 import LittleMummy.Idle
 import LittleMummy.Walk
@@ -30,6 +30,7 @@ view model =
             Options.default
                 |> Options.withScale (maxScale model)
                 |> Options.withAnimationFPS 10
+                |> Options.withMovementSpeed (1.2 / actionsPerSecond)
                 |> Just
         }
         [ viewTopBar model
@@ -55,10 +56,10 @@ viewRoll ( position, roll ) =
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 ))
         (if roll.reversed then
-            Dungeon.PropsItens.flagGreen
+            Dungeon.ToiletPaper.toiletPaperSmallFlipped
 
          else
-            Dungeon.PropsItens.flagRed
+            Dungeon.ToiletPaper.toiletPaperSmall
         )
     )
 
@@ -140,33 +141,33 @@ statusMessage model =
         1 ->
             "To win reverse the rolls by touching them"
 
-        2 ->
-            "Did you know? Nokia used to produce TP rolls!"
-
         3 ->
             "Avoid the guards!!!"
 
         l ->
-            case modBy 3 (l - 1) of
-                0 ->
-                    -- -----------------------------------------------------------"
-                    "The average roll has 333 sheets, that's plenty!"
+            facts
+                |> List.drop (modBy (List.length facts) l)
+                |> List.head
+                |> Maybe.withDefault ""
 
-                1 ->
-                    -- -----------------------------------------------------------"
-                    "One person uses ~384 trees of toilet paper in a lifetime."
 
-                _ ->
-                    -- -----------------------------------------------------------"
-                    "The first use of toilet paper was in China, 6th century."
+facts : List String
+facts =
+    [ "The average roll has 333 sheets, that's plenty!"
+    , "One person uses ~384 trees of toilet paper in a lifetime."
+    , "Did you know? Nokia used to produce TP rolls!"
+    , "The first use of toilet paper was in China, 6th century."
+    , "Bidets are mandatory in all houses in Italy since 1975."
+    , "Take regular toilet breaks! Your body needs them!"
+    ]
 
 
 maxScale : Model -> Int
 maxScale model =
     let
-        borderWidth : number
+        borderWidth : Float
         borderWidth =
-            tileSize
+            0.1 * min model.width model.height
 
         maxScaleWidth : Float
         maxScaleWidth =

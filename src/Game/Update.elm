@@ -3,7 +3,7 @@ module Game.Update exposing (Msg, controls, init, onAnimationFrame, subscription
 import Browser.Events
 import Dict exposing (Dict)
 import EverySet
-import Game.Types exposing (Flags, Hero, Model, Position, Roll)
+import Game.Types exposing (Flags, Hero, Model, Position, Roll, actionsPerSecond)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -329,11 +329,6 @@ wasReleased key frameStuff model =
         && not (EverySet.member key model.keyboardPressed)
     )
         || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
-
-
-actionsPerSecond : number
-actionsPerSecond =
-    4
 
 
 subscriptions : Model -> Sub Msg
