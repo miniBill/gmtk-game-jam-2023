@@ -18,7 +18,7 @@ main =
     Generate.fromJson
         (Json.Decode.list decodeFile)
         (\files ->
-            List.map
+            List.filterMap
                 (\( first, rest ) ->
                     directoryToGen first.directory (first :: rest)
                 )
@@ -66,11 +66,20 @@ decodeFile =
         (Json.Decode.field "contents" Json.Decode.string)
 
 
-directoryToGen : List String -> List InputFile -> File
+directoryToGen : List String -> List InputFile -> Maybe File
 directoryToGen moduleName files =
-    files
-        |> List.filterMap (fileToGen moduleName)
-        |> Elm.file (List.map String.Extra.classify moduleName)
+    let
+        declarations =
+            files
+                |> List.filterMap (fileToGen moduleName)
+    in
+    if List.isEmpty declarations then
+        Nothing
+
+    else
+        declarations
+            |> Elm.file (List.map String.Extra.classify moduleName)
+            |> Just
 
 
 fileToGen : List String -> InputFile -> Maybe Elm.Declaration
@@ -92,7 +101,7 @@ fileToGen moduleName { filename, contents } =
                     { width, height } =
                         Image.dimensions image
                 in
-                if List.member "Dungeon" moduleName || List.member "Fonts" moduleName then
+                if List.member "Dungeon" moduleName || List.member "Fonts" moduleName || String.contains "spritesheet" name then
                     let
                         size : number
                         size =
