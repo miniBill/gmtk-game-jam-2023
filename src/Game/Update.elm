@@ -123,9 +123,21 @@ updateReversing _ model =
 
                 ( prevX, prevY ) =
                     model.previous.heroPosition
+
+                diag1 : Position
+                diag1 =
+                    ( prevX, currY )
+
+                diag2 : Position
+                diag2 =
+                    ( currX, prevY )
             in
-            if currX /= prevX && currY /= prevY then
-                Just ( ( prevX, currY ), ( currX, prevY ) )
+            if
+                (currX /= prevX)
+                    && (currY /= prevY)
+                    && (Set.member diag1 model.walls || Set.member diag2 model.walls)
+            then
+                Just ( diag1, diag2 )
 
             else
                 Nothing
@@ -315,7 +327,7 @@ isPressed key frameStuff model =
 
 actionsPerSecond : number
 actionsPerSecond =
-    10
+    4
 
 
 subscriptions : Model -> Sub Msg

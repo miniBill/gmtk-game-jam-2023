@@ -161,7 +161,8 @@ maxScale model =
         maxScaleMin =
             min maxScaleWidth maxScaleHeight
     in
-    2 ^ floor (logBase 2 maxScaleMin)
+    --2 ^ floor (logBase 2 maxScaleMin)
+    floor maxScaleMin
 
 
 textTileset : Tileset
