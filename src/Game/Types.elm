@@ -35,6 +35,7 @@ type Msg
     | Resize Int Int
     | KeyDown Digital
     | KeyUp Digital
+    | Start
 
 
 type alias PlayingModel =

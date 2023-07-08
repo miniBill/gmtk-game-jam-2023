@@ -4,7 +4,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import EverySet
 import Game.Types exposing (Flags, Hero, Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
-import Gamepad exposing (Digital(..))
+import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
 import Random exposing (Generator)
@@ -32,6 +32,15 @@ type alias Room =
 update : Msg -> Model -> Model
 update msg model =
     case ( msg, model ) of
+        ( Start, Menu menu ) ->
+            Playing <| initPlaying menu
+
+        ( Start, Lost lost ) ->
+            Playing <| initPlaying lost
+
+        ( Start, Playing _ ) ->
+            model
+
         ( Tick frameStuff, Menu menu ) ->
             Menu { menu | now = frameStuff.timestamp }
 
@@ -105,10 +114,10 @@ maybeReset frameStuff model =
         _ =
             Debug.todo
     in
-    if wasReleased Back frameStuff model then
+    if wasReleased Gamepad.Back frameStuff model then
         toLevel 1 model
 
-    else if wasReleased A frameStuff model then
+    else if wasReleased Gamepad.A frameStuff model then
         toLevel (model.level + 1) model
 
     else
@@ -381,34 +390,34 @@ toDigital : String -> Maybe Digital
 toDigital string =
     case string of
         "ArrowLeft" ->
-            Just DpadLeft
+            Just Gamepad.DpadLeft
 
         "ArrowRight" ->
-            Just DpadRight
+            Just Gamepad.DpadRight
 
         "ArrowUp" ->
-            Just DpadUp
+            Just Gamepad.DpadUp
 
         "ArrowDown" ->
-            Just DpadDown
+            Just Gamepad.DpadDown
 
         "w" ->
-            Just DpadUp
+            Just Gamepad.DpadUp
 
         "a" ->
-            Just DpadLeft
+            Just Gamepad.DpadLeft
 
         "s" ->
-            Just DpadDown
+            Just Gamepad.DpadDown
 
         "d" ->
-            Just DpadRight
+            Just Gamepad.DpadRight
 
         " " ->
-            Just A
+            Just Gamepad.A
 
         "Backspace" ->
-            Just Back
+            Just Gamepad.Back
 
         _ ->
             Nothing
@@ -424,7 +433,7 @@ init flags =
     Menu flags
 
 
-initPlaying : Flags -> PlayingModel
+initPlaying : { flags | width : Float, height : Float, now : Time.Posix } -> PlayingModel
 initPlaying flags =
     let
         hero : Hero
@@ -748,10 +757,10 @@ time model =
 
 controls : List ( String, Digital )
 controls =
-    [ ( "Up", DpadUp )
-    , ( "Down", DpadDown )
-    , ( "Left", DpadLeft )
-    , ( "Right", DpadRight )
-    , ( "Flip", A )
-    , ( "Reset", Back )
+    [ ( "Up", Gamepad.DpadUp )
+    , ( "Down", Gamepad.DpadDown )
+    , ( "Left", Gamepad.DpadLeft )
+    , ( "Right", Gamepad.DpadRight )
+    , ( "Flip", Gamepad.A )
+    , ( "Reset", Gamepad.Back )
     ]

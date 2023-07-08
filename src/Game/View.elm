@@ -5,8 +5,9 @@ import Dict
 import Dungeon.Tiles.Wall
 import Dungeon.ToiletPaper
 import Fonts
-import Game.Types exposing (Model(..), Msg, PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Html exposing (Html)
+import Html.Events
 import LittleMummy.Idle
 import LittleMummy.Walk
 import PixelEngine
@@ -26,7 +27,10 @@ view : Model -> Html Msg
 view model =
     case model of
         Menu _ ->
-            Html.text "MENU"
+            Html.div []
+                [ Html.button [ Html.Events.onClick Start ]
+                    [ Html.text "START PLAYING" ]
+                ]
 
         Playing innerModel ->
             PixelEngine.toHtml
