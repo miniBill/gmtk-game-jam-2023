@@ -1,9 +1,9 @@
-module Game.Update exposing (Msg, controls, init, onAnimationFrame, subscriptions, time, update)
+module Game.Update exposing (controls, init, onAnimationFrame, subscriptions, time, update)
 
 import Browser.Events
 import Dict exposing (Dict)
 import EverySet
-import Game.Types exposing (Flags, Hero, Model, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Flags, Hero, Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -29,44 +29,67 @@ type alias Room =
     }
 
 
-type Msg
-    = Tick FrameStuff
-    | Resize Int Int
-    | KeyDown Digital
-    | KeyUp Digital
-
-
 update : Msg -> Model -> Model
 update msg model =
-    case msg of
-        Tick frameStuff ->
+    case ( msg, model ) of
+        ( Tick frameStuff, Menu menu ) ->
+            Menu { menu | now = frameStuff.timestamp }
+
+        ( Tick frameStuff, Playing innerModel ) ->
             let
                 -- Avoid jumps if focus is lost
                 fixed : FrameStuff
                 fixed =
                     { frameStuff | dt = min 200 frameStuff.dt }
             in
-            model
+            innerModel
                 |> updateTimestamp fixed
                 |> updatePosition frameStuff
                 |> updateReversing frameStuff
                 |> maybeReset frameStuff
                 |> moveToPrevious
+                |> Playing
 
-        Resize w h ->
-            { model
+        ( Tick frameStuff, Lost lost ) ->
+            Lost { lost | now = frameStuff.timestamp }
+
+        ( Resize w h, Menu menu ) ->
+            { menu
                 | width = toFloat w
                 , height = toFloat h
             }
+                |> Menu
 
-        KeyDown key ->
-            { model | keyboardPressed = EverySet.insert key model.keyboardPressed }
+        ( Resize w h, Playing innerModel ) ->
+            { innerModel
+                | width = toFloat w
+                , height = toFloat h
+            }
+                |> Playing
 
-        KeyUp key ->
-            { model | keyboardPressed = EverySet.remove key model.keyboardPressed }
+        ( Resize w h, Lost lost ) ->
+            { lost
+                | width = toFloat w
+                , height = toFloat h
+            }
+                |> Lost
+
+        ( KeyDown key, Playing innerModel ) ->
+            { innerModel | keyboardPressed = EverySet.insert key innerModel.keyboardPressed }
+                |> Playing
+
+        ( KeyUp key, Playing innerModel ) ->
+            { innerModel | keyboardPressed = EverySet.remove key innerModel.keyboardPressed }
+                |> Playing
+
+        ( KeyDown _, _ ) ->
+            model
+
+        ( KeyUp _, _ ) ->
+            model
 
 
-moveToPrevious : Model -> Model
+moveToPrevious : PlayingModel -> PlayingModel
 moveToPrevious model =
     { model
         | previous =
@@ -76,7 +99,7 @@ moveToPrevious model =
     }
 
 
-maybeReset : FrameStuff -> Model -> Model
+maybeReset : FrameStuff -> PlayingModel -> PlayingModel
 maybeReset frameStuff model =
     let
         _ =
@@ -92,7 +115,7 @@ maybeReset frameStuff model =
         model
 
 
-regen : Model -> Model
+regen : PlayingModel -> PlayingModel
 regen model =
     let
         ( walls, rooms ) =
@@ -105,7 +128,7 @@ regen model =
     }
 
 
-updateReversing : FrameStuff -> Model -> Model
+updateReversing : FrameStuff -> PlayingModel -> PlayingModel
 updateReversing _ model =
     let
         tryFlip : Position -> Dict Position Roll -> Dict Position Roll
@@ -162,7 +185,7 @@ updateReversing _ model =
                         |> tryFlip diag1
                         |> tryFlip diag2
 
-        newModel : Model
+        newModel : PlayingModel
         newModel =
             { model
                 | rolls =
@@ -180,7 +203,7 @@ updateReversing _ model =
         newModel
 
 
-toLevel : Int -> Model -> Model
+toLevel : Int -> PlayingModel -> PlayingModel
 toLevel level model =
     let
         diff : Int
@@ -214,14 +237,14 @@ toLevel level model =
         |> regen
 
 
-updateTimestamp : FrameStuff -> Model -> Model
+updateTimestamp : FrameStuff -> PlayingModel -> PlayingModel
 updateTimestamp frameStuff model =
     { model
         | now = frameStuff.timestamp
     }
 
 
-updatePosition : FrameStuff -> Model -> Model
+updatePosition : FrameStuff -> PlayingModel -> PlayingModel
 updatePosition frameStuff model =
     let
         hero : Hero
@@ -317,13 +340,13 @@ updatePosition frameStuff model =
         }
 
 
-isPressed : Digital -> FrameStuff -> Model -> Bool
+isPressed : Digital -> FrameStuff -> PlayingModel -> Bool
 isPressed key frameStuff model =
     EverySet.member key model.keyboardPressed
         || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
 
 
-wasReleased : Digital -> FrameStuff -> Model -> Bool
+wasReleased : Digital -> FrameStuff -> PlayingModel -> Bool
 wasReleased key frameStuff model =
     (EverySet.member key model.previous.keyboardPressed
         && not (EverySet.member key model.keyboardPressed)
@@ -398,6 +421,11 @@ onAnimationFrame frameStuff =
 
 init : Flags -> Model
 init flags =
+    Menu flags
+
+
+initPlaying : Flags -> PlayingModel
+initPlaying flags =
     let
         hero : Hero
         hero =
@@ -706,8 +734,16 @@ wall ( fromX, fromY ) ( toX, toY ) =
 
 
 time : Model -> Time.Posix
-time { now } =
-    now
+time model =
+    case model of
+        Menu { now } ->
+            now
+
+        Playing { now } ->
+            now
+
+        Lost { now } ->
+            now
 
 
 controls : List ( String, Digital )

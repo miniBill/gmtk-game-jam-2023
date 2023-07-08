@@ -40,7 +40,7 @@ type alias InnerModel =
 type Msg
     = InitWebAudio
     | Init Game.Flags
-    | GameMsg Game.Update.Msg
+    | GameMsg Game.Msg
     | OnFocus
     | OnBlur
 
