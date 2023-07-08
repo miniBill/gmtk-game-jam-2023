@@ -47,7 +47,10 @@ view model =
                     { height = toFloat innerModel.gameHeight * tileSize
                     , background = PixelEngine.colorBackground Color.blue
                     }
-                    (viewHero innerModel :: viewRolls innerModel ++ viewWalls innerModel)
+                    (viewRolls innerModel
+                        ++ viewWalls innerModel
+                        ++ [ viewHero innerModel ]
+                    )
                 , viewStatusMessage innerModel
                 ]
 
@@ -230,6 +233,11 @@ viewHero model =
         , position = model.heroPosition
         , key = "hero"
         }
+        |> (\_ ->
+                ( toFloatPosition model.heroPosition
+                , Image.fromSrc Sprites.mummyThicklines
+                )
+           )
 
 
 statusMessageHeight : number
