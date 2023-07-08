@@ -49,8 +49,9 @@ update msg model =
             model
                 |> updateTimestamp fixed
                 |> updatePosition frameStuff
-                |> updateAttacking frameStuff
+                |> updateReversing frameStuff
                 |> maybeReset frameStuff
+                |> moveKeyboardPressedToPrevious
 
         Resize w h ->
             { model
@@ -63,6 +64,11 @@ update msg model =
 
         KeyUp key ->
             { model | keyboardPressed = EverySet.remove key model.keyboardPressed }
+
+
+moveKeyboardPressedToPrevious : Model -> Model
+moveKeyboardPressedToPrevious model =
+    { model | previousKeyboardPressed = model.keyboardPressed }
 
 
 maybeReset : FrameStuff -> Model -> Model
@@ -82,9 +88,24 @@ maybeReset frameStuff ({ hero } as model) =
         model
 
 
-updateAttacking : FrameStuff -> Model -> Model
-updateAttacking _ model =
-    model
+updateReversing : FrameStuff -> Model -> Model
+updateReversing frameStuff model =
+    case Dict.get model.hero.position model.rolls of
+        Nothing ->
+            model
+
+        Just roll ->
+            if wasReleased A frameStuff model then
+                { model
+                    | rolls =
+                        Dict.insert
+                            model.hero.position
+                            { roll | reversed = not roll.reversed }
+                            model.rolls
+                }
+
+            else
+                model
 
 
 updateTimestamp : FrameStuff -> Model -> Model
@@ -197,6 +218,14 @@ isPressed key frameStuff model =
         || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
 
 
+wasReleased : Digital -> FrameStuff -> Model -> Bool
+wasReleased key frameStuff model =
+    (EverySet.member key model.previousKeyboardPressed
+        && not (EverySet.member key model.keyboardPressed)
+    )
+        || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
+
+
 actionsPerSecond : number
 actionsPerSecond =
     10
@@ -293,6 +322,7 @@ init flags =
     in
     { hero = hero
     , keyboardPressed = EverySet.empty
+    , previousKeyboardPressed = EverySet.empty
     , now = flags.now
     , width = flags.width
     , height = flags.height

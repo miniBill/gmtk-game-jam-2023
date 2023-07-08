@@ -17,6 +17,7 @@ type alias Flags =
 type alias Model =
     { hero : Hero
     , keyboardPressed : EverySet Digital
+    , previousKeyboardPressed : EverySet Digital
     , now : Time.Posix
     , width : Float
     , height : Float
