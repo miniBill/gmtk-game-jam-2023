@@ -89,7 +89,7 @@ regen : Model -> Model
 regen model =
     let
         ( walls, rooms ) =
-            createWalls model.now model.gameWidth model.gameHeight
+            generateWalls model.now model.gameWidth model.gameHeight
     in
     { model
         | walls = walls
@@ -416,7 +416,7 @@ init flags =
             maxGameCells // gameWidth
 
         ( walls, rooms ) =
-            createWalls flags.now gameWidth gameHeight
+            generateWalls flags.now gameWidth gameHeight
     in
     { hero = hero
     , heroPosition = ( 1, 1 )
@@ -467,8 +467,8 @@ createRolls now rooms =
         |> Tuple.first
 
 
-createWalls : Time.Posix -> Int -> Int -> ( Set Position, List Room )
-createWalls now gameWidth gameHeight =
+generateWalls : Time.Posix -> Int -> Int -> ( Set Position, List Room )
+generateWalls now gameWidth gameHeight =
     let
         topLeft : Position
         topLeft =
