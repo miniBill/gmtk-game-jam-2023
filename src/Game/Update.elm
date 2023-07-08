@@ -6,8 +6,19 @@ import Game.Types exposing (Flags, Hero, Model, Position)
 import Gamepad exposing (Digital(..))
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
-import Set
+import Random exposing (Generator)
+import Set exposing (Set)
 import Time
+
+
+minArea : Int
+minArea =
+    6
+
+
+maxArea : Int
+maxArea =
+    10
 
 
 type Msg
@@ -245,13 +256,11 @@ init flags =
     , height = flags.height
     , gameWidth = gameWidth
     , gameHeight = gameHeight
-    , walls =
-        createWalls flags.now gameWidth gameHeight
-            |> Set.fromList
+    , walls = createWalls flags.now gameWidth gameHeight
     }
 
 
-createWalls : Time.Posix -> Int -> Int -> List ( Int, Int )
+createWalls : Time.Posix -> Int -> Int -> Set ( Int, Int )
 createWalls now gameWidth gameHeight =
     let
         topLeft : ( Int, Int )
@@ -285,8 +294,44 @@ createWalls now gameWidth gameHeight =
         rightWall : List ( Int, Int )
         rightWall =
             wall topRight bottomRight
+
+        outerWalls : List ( Int, Int )
+        outerWalls =
+            topWall
+                ++ bottomWall
+                ++ leftWall
+                ++ rightWall
+
+        internalWalls : Set ( Int, Int )
+        internalWalls =
+            Random.step
+                (wallGenerator topLeft bottomRight)
+                (Random.initialSeed <| Time.posixToMillis now)
+                |> Tuple.first
     in
-    topWall ++ bottomWall ++ leftWall ++ rightWall
+    Set.union (Set.fromList outerWalls) internalWalls
+
+
+wallGenerator : ( Int, Int ) -> ( Int, Int ) -> Generator (Set ( Int, Int ))
+wallGenerator (( minX, minY ) as topLeft) (( maxX, maxY ) as bottomRight) =
+    if area topLeft bottomRight >= maxArea then
+        if maxY - minY > maxX - minX then
+            -- vertical split
+            Random.constant Set.empty
+
+        else
+            -- horizontal split
+            Random.constant Set.empty
+
+    else
+        Random.constant Set.empty
+
+
+{-| Area of a rectangle, given points on the border.
+-}
+area : ( Int, Int ) -> ( Int, Int ) -> Int
+area ( minX, minY ) ( maxX, maxY ) =
+    abs (maxX - minX - 1) * abs (maxY - minY - 1)
 
 
 wall : ( Int, Int ) -> ( Int, Int ) -> List ( Int, Int )
