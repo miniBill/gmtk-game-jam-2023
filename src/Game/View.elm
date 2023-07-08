@@ -40,9 +40,9 @@ viewWalls model =
         |> List.map viewWall
 
 
-viewWall : ( Int, Int ) -> ( ( Float, Float ), Image msg )
-viewWall ( x, y ) =
-    ( toFloatPosition { x = x, y = y }
+viewWall : Position -> ( ( Float, Float ), Image msg )
+viewWall position =
+    ( toFloatPosition position
     , Image.fromTile
         (Tile.fromPosition ( 0, 0 ))
         Dungeon.Tiles.Wall.wall1.tileset
@@ -164,9 +164,9 @@ viewAnimated { position, spritesheet, key } =
 
 
 toFloatPosition : Position -> ( Float, Float )
-toFloatPosition position =
-    ( toFloat <| tileSize * position.x
-    , toFloat <| tileSize * position.y
+toFloatPosition ( x, y ) =
+    ( toFloat <| tileSize * x
+    , toFloat <| tileSize * y
     )
 
 

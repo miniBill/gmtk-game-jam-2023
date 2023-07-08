@@ -21,7 +21,7 @@ type alias Model =
     , height : Float
     , gameWidth : Int
     , gameHeight : Int
-    , walls : Set ( Int, Int )
+    , walls : Set Position
     }
 
 
@@ -35,6 +35,4 @@ type alias Hero =
 
 
 type alias Position =
-    { x : Int
-    , y : Int
-    }
+    ( Int, Int )
