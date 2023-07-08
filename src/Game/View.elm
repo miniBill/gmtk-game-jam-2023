@@ -134,8 +134,30 @@ viewStatusMessage model =
 
 
 statusMessage : Model -> String
-statusMessage _ =
-    "To win the game, reverse the rolls!"
+statusMessage model =
+    case model.level of
+        1 ->
+            "To win reverse the rolls by touching them"
+
+        2 ->
+            "Did you know? Nokia used to produce TP rolls!"
+
+        3 ->
+            "Avoid the guards!!!"
+
+        l ->
+            case modBy 3 (l - 1) of
+                0 ->
+                    -- -----------------------------------------------------------"
+                    "The average roll has 333 sheets, that's plenty!"
+
+                1 ->
+                    -- -----------------------------------------------------------"
+                    "One person uses ~384 trees of toilet paper in a lifetime."
+
+                _ ->
+                    -- -----------------------------------------------------------"
+                    "The first use of toilet paper was in China, 6th century."
 
 
 maxScale : Model -> Int

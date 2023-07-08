@@ -78,8 +78,15 @@ moveToPrevious model =
 
 maybeReset : FrameStuff -> Model -> Model
 maybeReset frameStuff model =
-    if isPressed Back frameStuff model then
-        regen model
+    let
+        _ =
+            Debug.todo
+    in
+    if wasReleased Back frameStuff model then
+        toLevel 1 model
+
+    else if wasReleased A frameStuff model then
+        toLevel (model.level + 1) model
 
     else
         model
@@ -316,13 +323,12 @@ isPressed key frameStuff model =
         || List.any (\gamepad -> Gamepad.isPressed gamepad key) frameStuff.gamepads
 
 
-
--- wasReleased : Digital -> FrameStuff -> Model -> Bool
--- wasReleased key frameStuff model =
---     (EverySet.member key model.previous.keyboardPressed
---         && not (EverySet.member key model.keyboardPressed)
---     )
---         || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
+wasReleased : Digital -> FrameStuff -> Model -> Bool
+wasReleased key frameStuff model =
+    (EverySet.member key model.previous.keyboardPressed
+        && not (EverySet.member key model.keyboardPressed)
+    )
+        || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
 
 
 actionsPerSecond : number
