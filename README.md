@@ -1,3 +1,8 @@
+# TODO
+
+- pause menu
+- credits
+
 # Credits
 
 - Name - Hannah

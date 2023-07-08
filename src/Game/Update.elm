@@ -1,6 +1,9 @@
-module Game.Update exposing (audio, controls, init, onAnimationFrame, subscriptions, time, update)
+module Game.Update exposing (audio, controls, init, loadAudio, onAnimationFrame, subscriptions, update)
 
 import Audio exposing (Audio, AudioCmd)
+import AudioSources
+import AudioSources.Effects
+import AudioSources.Music
 import Browser.Events
 import Dict exposing (Dict)
 import Duration
@@ -35,7 +38,18 @@ type alias Room =
 update : Msg -> Model -> Model
 update msg model =
     case ( msg, model.inner ) of
-        ( Start, Menu ) ->
+        ( CleanQueue, _ ) ->
+            { model
+                | effects =
+                    List.filter
+                        (\( _, at ) -> Time.posixToMillis model.now - Time.posixToMillis at < 5000)
+                        model.effects
+            }
+
+        ( MenuHover, _ ) ->
+            { model | effects = ( AudioSources.Effects.menuHover, model.now ) :: model.effects }
+
+        ( Start, Menu _ ) ->
             { model | inner = Playing <| initPlaying model }
 
         ( Start, Lost _ ) ->
@@ -44,7 +58,7 @@ update msg model =
         ( Start, Playing _ ) ->
             model
 
-        ( Tick frameStuff, Menu ) ->
+        ( Tick frameStuff, Menu _ ) ->
             { model | now = frameStuff.timestamp }
 
         ( Tick frameStuff, Playing innerModel ) ->
@@ -360,11 +374,20 @@ wasReleased key frameStuff model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Browser.Events.onResize Resize
         , Browser.Events.onKeyDown (Decode.map KeyDown keyDecoder)
         , Browser.Events.onKeyUp (Decode.map KeyUp keyDecoder)
+        , Browser.Events.onAnimationFrame
+            (\newTime ->
+                Tick
+                    { dt = toFloat <| Time.posixToMillis newTime - Time.posixToMillis model.now
+                    , timestamp = newTime
+                    , gamepads = []
+                    }
+            )
+        , Time.every 1000 <| \_ -> CleanQueue
         ]
 
 
@@ -427,12 +450,16 @@ onAnimationFrame frameStuff =
 init : Flags -> ( Model, AudioCmd Msg )
 init flags =
     ( { now = flags.now
+      , startTime = flags.now
+      , effects = []
       , width = flags.width
       , height = flags.height
       , sources = Dict.empty
-      , inner = Menu
+      , inner = Menu {}
       }
-    , Audio.loadAudio (Loaded "Base.mp3") "audio/music/Base.mp3"
+    , AudioSources.all
+        |> List.map loadAudio
+        |> Audio.cmdBatch
     )
 
 
@@ -743,11 +770,6 @@ wall ( fromX, fromY ) ( toX, toY ) =
         |> Set.fromList
 
 
-time : Model -> Time.Posix
-time model =
-    model.now
-
-
 controls : List ( String, Digital )
 controls =
     [ ( "Up", Gamepad.DpadUp )
@@ -763,7 +785,72 @@ controls =
 
 audio : Model -> Audio
 audio model =
-    case Dict.get "Base.mp3" model.sources of
+    let
+        musicAt : Time.Posix
+        musicAt =
+            (1515 + Time.posixToMillis model.startTime)
+                |> Time.millisToPosix
+
+        tracks : List Audio
+        tracks =
+            case model.inner of
+                Menu _ ->
+                    [ effect model AudioSources.Music.menuIntro model.startTime
+                        |> Audio.scaleVolume 1
+                    , music model AudioSources.Music.base musicAt
+                        |> Audio.scaleVolume 1
+                    , music model AudioSources.Music.menu musicAt
+                        |> Audio.scaleVolume 1
+                    ]
+
+                Playing _ ->
+                    [ music model AudioSources.Music.base musicAt
+                        |> Audio.scaleVolume 1
+                    , music model AudioSources.Music.sneaky musicAt
+                        |> Audio.scaleVolume 1
+                    , music model AudioSources.Music.chase musicAt
+                        |> Audio.scaleVolume 0
+                    , music model AudioSources.Music.panic musicAt
+                        |> Audio.scaleVolume 0
+                    ]
+
+                Lost _ ->
+                    []
+
+        effects : List Audio
+        effects =
+            List.map
+                (\( key, at ) ->
+                    effect model key at
+                        |> Audio.scaleVolume 1
+                )
+                model.effects
+    in
+    Audio.group
+        (effects ++ tracks)
+        |> Audio.scaleVolume 0.2
+        |> Audio.scaleVolume 0.5
+
+
+effect : Model -> String -> Time.Posix -> Audio
+effect model key at =
+    case Dict.get key model.sources of
+        Nothing ->
+            Audio.silence
+
+        Just source ->
+            Audio.audioWithConfig
+                { loop = Nothing
+                , playbackRate = 1
+                , startAt = Quantity.zero
+                }
+                source
+                at
+
+
+music : Model -> String -> Time.Posix -> Audio
+music model key at =
+    case Dict.get key model.sources of
         Nothing ->
             Audio.silence
 
@@ -772,10 +859,15 @@ audio model =
                 { loop =
                     Just
                         { loopStart = Quantity.zero
-                        , loopEnd = Duration.seconds 48
+                        , loopEnd = Duration.seconds 48.013025
                         }
                 , playbackRate = 1
                 , startAt = Quantity.zero
                 }
                 source
-                (Time.millisToPosix 0)
+                at
+
+
+loadAudio : String -> AudioCmd Msg
+loadAudio key =
+    Audio.loadAudio (Loaded key) <| "/audio/" ++ key

@@ -10,7 +10,7 @@
   <body style="background-color: black">
     <main></main>
     <script src="/elm.js"></script>
-    <script src="/gamepadPort.js"></script>
+    <!-- <script src="/gamepadPort.js"></script> -->
     <script src="/elm-web-audio.js"></script>
     <script>
       const app = Elm.Main.init({
@@ -20,7 +20,7 @@
 
       startAudio(app);
 
-      addGamepadPort(app);
+      // addGamepadPort(app);
 
       window.onfocus = () => app.ports.onfocus.send({});
       window.onblur = () => app.ports.onblur.send({});

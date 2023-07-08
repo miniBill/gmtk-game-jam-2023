@@ -26,9 +26,27 @@ tileSize =
 view : Model -> Html Msg
 view model =
     case model.inner of
-        Menu ->
+        Menu _ ->
             Html.div []
-                [ Html.button [ Html.Events.onClick Start ]
+                [ Html.button
+                    [ Html.Events.onClick Start
+                    , Html.Events.onMouseEnter MenuHover
+                    ]
+                    [ Html.text "START PLAYING" ]
+                , Html.button
+                    [ Html.Events.onClick Start
+                    , Html.Events.onMouseEnter MenuHover
+                    ]
+                    [ Html.text "START PLAYING" ]
+                , Html.button
+                    [ Html.Events.onClick Start
+                    , Html.Events.onMouseEnter MenuHover
+                    ]
+                    [ Html.text "START PLAYING" ]
+                , Html.button
+                    [ Html.Events.onClick Start
+                    , Html.Events.onMouseEnter MenuHover
+                    ]
                     [ Html.text "START PLAYING" ]
                 ]
 

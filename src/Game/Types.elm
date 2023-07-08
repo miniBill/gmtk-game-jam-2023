@@ -18,6 +18,8 @@ type alias Flags =
 
 type alias Model =
     { now : Time.Posix
+    , startTime : Time.Posix
+    , effects : List ( String, Time.Posix )
     , width : Float
     , height : Float
     , sources : Dict String Source
@@ -26,7 +28,7 @@ type alias Model =
 
 
 type InnerModel
-    = Menu
+    = Menu {}
     | Playing PlayingModel
     | Lost
         { level : Int
@@ -41,6 +43,8 @@ type Msg
     | KeyUp Digital
     | Start
     | Loaded String (Result Audio.LoadError Source)
+    | MenuHover
+    | CleanQueue
 
 
 type alias PlayingModel =

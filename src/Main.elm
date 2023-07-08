@@ -1,12 +1,11 @@
 port module Main exposing (Flags, Model, Msg, main)
 
 import Audio exposing (Audio, AudioCmd)
+import AudioSources.Music
 import Browser.Dom
 import Game.Types as Game
 import Game.Update
 import Game.View
-import Gamepad.Simple
-import GamepadPort
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -77,20 +76,26 @@ audio model =
             Game.Update.audio inner.game
 
 
-gamepadConfig : Gamepad.Simple.Config Msg
-gamepadConfig =
-    { onAnimationFrame = \stuff -> GameMsg (Game.Update.onAnimationFrame stuff)
-    , onBlob = GamepadPort.onBlob
-    , saveToLocalStorage = GamepadPort.saveToLocalStorage
-    , controls = Game.Update.controls
-    }
+
+-- gamepadConfig : Gamepad.Simple.Config Msg
+-- gamepadConfig =
+--     { onAnimationFrame = \stuff -> GameMsg (Game.Update.onAnimationFrame stuff)
+--     , onBlob = GamepadPort.onBlob
+--     , saveToLocalStorage = GamepadPort.saveToLocalStorage
+--     , controls = Game.Update.controls
+--     }
 
 
-init : Flags -> ( Model, Cmd Msg, AudioCmd msg )
+init : Flags -> ( Model, Cmd Msg, AudioCmd Msg )
 init _ =
     ( WaitingWebAudioInit
     , Cmd.none
-    , Audio.cmdNone
+    , [ AudioSources.Music.menuIntro
+      , AudioSources.Music.base
+      ]
+        |> List.map Game.Update.loadAudio
+        |> Audio.cmdBatch
+        |> Audio.cmdMap GameMsg
     )
 
 
