@@ -1,12 +1,15 @@
-module Game.Update exposing (controls, init, onAnimationFrame, subscriptions, time, update)
+module Game.Update exposing (audio, controls, init, onAnimationFrame, subscriptions, time, update)
 
+import Audio exposing (Audio, AudioCmd)
 import Browser.Events
 import Dict exposing (Dict)
+import Duration
 import EverySet
-import Game.Types exposing (Flags, Hero, Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
+import Quantity
 import Random exposing (Generator)
 import Random.Extra
 import Set exposing (Set)
@@ -31,18 +34,18 @@ type alias Room =
 
 update : Msg -> Model -> Model
 update msg model =
-    case ( msg, model ) of
-        ( Start, Menu menu ) ->
-            Playing <| initPlaying menu
+    case ( msg, model.inner ) of
+        ( Start, Menu ) ->
+            { model | inner = Playing <| initPlaying model }
 
-        ( Start, Lost lost ) ->
-            Playing <| initPlaying lost
+        ( Start, Lost _ ) ->
+            { model | inner = Playing <| initPlaying model }
 
         ( Start, Playing _ ) ->
             model
 
-        ( Tick frameStuff, Menu menu ) ->
-            Menu { menu | now = frameStuff.timestamp }
+        ( Tick frameStuff, Menu ) ->
+            { model | now = frameStuff.timestamp }
 
         ( Tick frameStuff, Playing innerModel ) ->
             let
@@ -51,51 +54,51 @@ update msg model =
                 fixed =
                     { frameStuff | dt = min 200 frameStuff.dt }
             in
-            innerModel
-                |> updateTimestamp fixed
-                |> updatePosition frameStuff
-                |> updateReversing frameStuff
-                |> maybeReset frameStuff
-                |> moveToPrevious
-                |> Playing
+            { model
+                | now = fixed.timestamp
+                , inner =
+                    innerModel
+                        |> updatePosition fixed
+                        |> updateReversing fixed model
+                        |> maybeReset fixed model
+                        |> moveToPrevious
+                        |> Playing
+            }
 
-        ( Tick frameStuff, Lost lost ) ->
-            Lost { lost | now = frameStuff.timestamp }
+        ( Tick frameStuff, Lost _ ) ->
+            { model | now = frameStuff.timestamp }
 
-        ( Resize w h, Menu menu ) ->
-            { menu
+        ( Resize w h, _ ) ->
+            { model
                 | width = toFloat w
                 , height = toFloat h
             }
-                |> Menu
-
-        ( Resize w h, Playing innerModel ) ->
-            { innerModel
-                | width = toFloat w
-                , height = toFloat h
-            }
-                |> Playing
-
-        ( Resize w h, Lost lost ) ->
-            { lost
-                | width = toFloat w
-                , height = toFloat h
-            }
-                |> Lost
 
         ( KeyDown key, Playing innerModel ) ->
-            { innerModel | keyboardPressed = EverySet.insert key innerModel.keyboardPressed }
-                |> Playing
+            { model
+                | inner =
+                    { innerModel | keyboardPressed = EverySet.insert key innerModel.keyboardPressed }
+                        |> Playing
+            }
 
         ( KeyUp key, Playing innerModel ) ->
-            { innerModel | keyboardPressed = EverySet.remove key innerModel.keyboardPressed }
-                |> Playing
+            { model
+                | inner =
+                    { innerModel | keyboardPressed = EverySet.remove key innerModel.keyboardPressed }
+                        |> Playing
+            }
 
         ( KeyDown _, _ ) ->
             model
 
         ( KeyUp _, _ ) ->
             model
+
+        ( Loaded _ (Err e), _ ) ->
+            Debug.todo <| "CRASH " ++ Debug.toString e
+
+        ( Loaded key (Ok source), _ ) ->
+            { model | sources = Dict.insert key source model.sources }
 
 
 moveToPrevious : PlayingModel -> PlayingModel
@@ -108,37 +111,37 @@ moveToPrevious model =
     }
 
 
-maybeReset : FrameStuff -> PlayingModel -> PlayingModel
-maybeReset frameStuff model =
+maybeReset : FrameStuff -> Model -> PlayingModel -> PlayingModel
+maybeReset frameStuff model playingModel =
     let
         _ =
             Debug.todo
     in
-    if wasReleased Gamepad.Back frameStuff model then
-        toLevel 1 model
+    if wasReleased Gamepad.Back frameStuff playingModel then
+        toLevel 1 model playingModel
 
-    else if wasReleased Gamepad.A frameStuff model then
-        toLevel (model.level + 1) model
+    else if wasReleased Gamepad.A frameStuff playingModel then
+        toLevel (playingModel.level + 1) model playingModel
 
     else
-        model
+        playingModel
 
 
-regen : PlayingModel -> PlayingModel
-regen model =
+regen : Model -> PlayingModel -> PlayingModel
+regen model playingModel =
     let
         ( walls, rooms ) =
-            generateWalls model.now model.gameWidth model.gameHeight
+            generateWalls model.now playingModel.gameWidth playingModel.gameHeight
     in
-    { model
+    { playingModel
         | walls = walls
         , rolls = createRolls model.now rooms
         , heroPosition = ( 1, 1 )
     }
 
 
-updateReversing : FrameStuff -> PlayingModel -> PlayingModel
-updateReversing _ model =
+updateReversing : FrameStuff -> Model -> PlayingModel -> PlayingModel
+updateReversing _ model playingModel =
     let
         tryFlip : Position -> Dict Position Roll -> Dict Position Roll
         tryFlip position rolls =
@@ -158,10 +161,10 @@ updateReversing _ model =
         diagonals =
             let
                 ( currX, currY ) =
-                    model.heroPosition
+                    playingModel.heroPosition
 
                 ( prevX, prevY ) =
-                    model.previous.heroPosition
+                    playingModel.previous.heroPosition
 
                 diag1 : Position
                 diag1 =
@@ -174,7 +177,7 @@ updateReversing _ model =
             if
                 (currX /= prevX)
                     && (currY /= prevY)
-                    && (Set.member diag1 model.walls || Set.member diag2 model.walls)
+                    && (Set.member diag1 playingModel.walls || Set.member diag2 playingModel.walls)
             then
                 Just ( diag1, diag2 )
 
@@ -185,18 +188,18 @@ updateReversing _ model =
         normalFlip =
             case diagonals of
                 Nothing ->
-                    model.rolls
-                        |> tryFlip model.heroPosition
+                    playingModel.rolls
+                        |> tryFlip playingModel.heroPosition
 
                 Just ( diag1, diag2 ) ->
-                    model.rolls
-                        |> tryFlip model.heroPosition
+                    playingModel.rolls
+                        |> tryFlip playingModel.heroPosition
                         |> tryFlip diag1
                         |> tryFlip diag2
 
-        newModel : PlayingModel
-        newModel =
-            { model
+        newPlayingModel : PlayingModel
+        newPlayingModel =
+            { playingModel
                 | rolls =
                     normalFlip
             }
@@ -204,27 +207,27 @@ updateReversing _ model =
     if
         List.all
             (\( _, { reversed } ) -> reversed)
-            (Dict.toList newModel.rolls)
+            (Dict.toList newPlayingModel.rolls)
     then
-        toLevel (model.level + 1) newModel
+        toLevel (newPlayingModel.level + 1) model newPlayingModel
 
     else
-        newModel
+        newPlayingModel
 
 
-toLevel : Int -> PlayingModel -> PlayingModel
-toLevel level model =
+toLevel : Int -> Model -> PlayingModel -> PlayingModel
+toLevel level model playingModel =
     let
         diff : Int
         diff =
-            level - model.level
+            level - playingModel.level
     in
-    (if model.gameWidth > model.gameHeight then
-        { model
+    (if playingModel.gameWidth > playingModel.gameHeight then
+        { playingModel
             | level = level
-            , gameWidth = model.gameWidth + diff
+            , gameWidth = playingModel.gameWidth + diff
             , gameHeight =
-                (toFloat (model.gameWidth + diff)
+                (toFloat (playingModel.gameWidth + diff)
                     * model.height
                     / model.width
                 )
@@ -232,25 +235,18 @@ toLevel level model =
         }
 
      else
-        { model
+        { playingModel
             | level = level
-            , gameHeight = model.gameHeight + diff
+            , gameHeight = playingModel.gameHeight + diff
             , gameWidth =
-                (toFloat (model.gameHeight + diff)
+                (toFloat (playingModel.gameHeight + diff)
                     * model.width
                     / model.height
                 )
                     |> floor
         }
     )
-        |> regen
-
-
-updateTimestamp : FrameStuff -> PlayingModel -> PlayingModel
-updateTimestamp frameStuff model =
-    { model
-        | now = frameStuff.timestamp
-    }
+        |> regen model
 
 
 updatePosition : FrameStuff -> PlayingModel -> PlayingModel
@@ -428,12 +424,19 @@ onAnimationFrame frameStuff =
     Tick frameStuff
 
 
-init : Flags -> Model
+init : Flags -> ( Model, AudioCmd Msg )
 init flags =
-    Menu flags
+    ( { now = flags.now
+      , width = flags.width
+      , height = flags.height
+      , sources = Dict.empty
+      , inner = Menu
+      }
+    , Audio.loadAudio (Loaded "Base.mp3") "audio/music/Base.mp3"
+    )
 
 
-initPlaying : { flags | width : Float, height : Float, now : Time.Posix } -> PlayingModel
+initPlaying : Model -> PlayingModel
 initPlaying flags =
     let
         hero : Hero
@@ -466,14 +469,12 @@ initPlaying flags =
         { heroPosition = ( 1, 1 )
         , keyboardPressed = EverySet.empty
         }
-    , now = flags.now
-    , width = flags.width
-    , height = flags.height
     , gameWidth = gameWidth
     , gameHeight = gameHeight
     , walls = walls
     , rolls = createRolls flags.now rooms
     , level = 1
+    , panicLevel = 0
     }
 
 
@@ -744,15 +745,7 @@ wall ( fromX, fromY ) ( toX, toY ) =
 
 time : Model -> Time.Posix
 time model =
-    case model of
-        Menu { now } ->
-            now
-
-        Playing { now } ->
-            now
-
-        Lost { now } ->
-            now
+    model.now
 
 
 controls : List ( String, Digital )
@@ -763,4 +756,26 @@ controls =
     , ( "Right", Gamepad.DpadRight )
     , ( "Flip", Gamepad.A )
     , ( "Reset", Gamepad.Back )
+    , ( "Panic up", Gamepad.X )
+    , ( "Panic down", Gamepad.Y )
     ]
+
+
+audio : Model -> Audio
+audio model =
+    case Dict.get "Base.mp3" model.sources of
+        Nothing ->
+            Audio.silence
+
+        Just source ->
+            Audio.audioWithConfig
+                { loop =
+                    Just
+                        { loopStart = Quantity.zero
+                        , loopEnd = Duration.seconds 48
+                        }
+                , playbackRate = 1
+                , startAt = Quantity.zero
+                }
+                source
+                (Time.millisToPosix 0)

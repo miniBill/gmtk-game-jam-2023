@@ -4,7 +4,7 @@ import Color
 import Dict
 import Dungeon.Tiles.Wall
 import Fonts
-import Game.Types exposing (Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Html exposing (Html)
 import Html.Events
 import LittleMummy.Idle
@@ -25,8 +25,8 @@ tileSize =
 
 view : Model -> Html Msg
 view model =
-    case model of
-        Menu _ ->
+    case model.inner of
+        Menu ->
             Html.div []
                 [ Html.button [ Html.Events.onClick Start ]
                     [ Html.text "START PLAYING" ]
@@ -37,7 +37,7 @@ view model =
                 { width = toFloat innerModel.gameWidth * tileSize
                 , options =
                     Options.default
-                        |> Options.withScale (maxScale innerModel)
+                        |> Options.withScale (maxScale model innerModel)
                         |> Options.withAnimationFPS 10
                         |> Options.withMovementSpeed (1.2 / actionsPerSecond)
                         |> Just
@@ -178,8 +178,8 @@ facts =
     ]
 
 
-maxScale : PlayingModel -> Int
-maxScale model =
+maxScale : Model -> PlayingModel -> Int
+maxScale model playingModel =
     let
         borderWidth : Float
         borderWidth =
@@ -188,12 +188,12 @@ maxScale model =
         maxScaleWidth : Float
         maxScaleWidth =
             (model.width - 2 * borderWidth)
-                / (toFloat model.gameWidth * tileSize)
+                / (toFloat playingModel.gameWidth * tileSize)
 
         maxScaleHeight : Float
         maxScaleHeight =
             (model.height - 2 * borderWidth)
-                / ((toFloat model.gameHeight * tileSize)
+                / ((toFloat playingModel.gameHeight * tileSize)
                     + ((statusMessageHeight + 2) * toFloat textTileset.spriteHeight)
                   )
 

@@ -1,5 +1,6 @@
-module Game.Types exposing (Flags, Hero, Model(..), Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+module Game.Types exposing (Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 
+import Audio exposing (Source)
 import Dict exposing (Dict)
 import EverySet exposing (EverySet)
 import Gamepad exposing (Digital)
@@ -15,18 +16,21 @@ type alias Flags =
     }
 
 
-type Model
+type alias Model =
+    { now : Time.Posix
+    , width : Float
+    , height : Float
+    , sources : Dict String Source
+    , inner : InnerModel
+    }
+
+
+type InnerModel
     = Menu
-        { now : Time.Posix
-        , width : Float
-        , height : Float
-        }
     | Playing PlayingModel
     | Lost
-        { now : Time.Posix
-        , width : Float
-        , height : Float
-        , level : Int
+        { level : Int
+        , sources : Dict String Source
         }
 
 
@@ -36,6 +40,7 @@ type Msg
     | KeyDown Digital
     | KeyUp Digital
     | Start
+    | Loaded String (Result Audio.LoadError Source)
 
 
 type alias PlayingModel =
@@ -46,14 +51,12 @@ type alias PlayingModel =
         { heroPosition : Position
         , keyboardPressed : EverySet Digital
         }
-    , now : Time.Posix
-    , width : Float
-    , height : Float
     , gameWidth : Int
     , gameHeight : Int
     , walls : Set Position
     , rolls : Dict Position Roll
     , level : Int
+    , panicLevel : Float
     }
 
 

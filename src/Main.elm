@@ -1,6 +1,6 @@
 port module Main exposing (Flags, Model, Msg, main)
 
-import Audio
+import Audio exposing (Audio, AudioCmd)
 import Browser.Dom
 import Game.Types as Game
 import Game.Update
@@ -13,11 +13,12 @@ import Html.Events
 import Json.Encode
 import Task
 import Time
-import WebAudio
-import WebAudio.Property
 
 
-port toWebAudio : Json.Encode.Value -> Cmd msg
+port audioPortToJS : Json.Encode.Value -> Cmd msg
+
+
+port audioPortFromJS : (Json.Encode.Value -> msg) -> Sub msg
 
 
 port onfocus : ({} -> msg) -> Sub msg
@@ -49,15 +50,31 @@ type alias Flags =
     {}
 
 
-main : Gamepad.Simple.Program Flags Model Msg
+
+-- main : Gamepad.Simple.Program Flags Model Msg
+
+
 main =
-    Gamepad.Simple.element
-        gamepadConfig
+    Audio.elementWithAudio
+        --  Gamepad.Simple.element
+        --     gamepadConfig
         { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
+        , update = \_ -> update
+        , view = \_ -> view
+        , subscriptions = \_ -> subscriptions
+        , audio = \_ -> audio
+        , audioPort = { toJS = audioPortToJS, fromJS = audioPortFromJS }
         }
+
+
+audio : Model -> Audio
+audio model =
+    case model of
+        WaitingWebAudioInit ->
+            Audio.silence
+
+        WebAudioReady inner ->
+            Game.Update.audio inner.game
 
 
 gamepadConfig : Gamepad.Simple.Config Msg
@@ -69,21 +86,15 @@ gamepadConfig =
     }
 
 
-audioCmd : InnerModel -> Cmd Msg
-audioCmd model =
-    audio model
-        |> Json.Encode.list WebAudio.encode
-        |> toWebAudio
-
-
-init : Flags -> ( Model, Cmd Msg )
+init : Flags -> ( Model, Cmd Msg, AudioCmd msg )
 init _ =
     ( WaitingWebAudioInit
     , Cmd.none
+    , Audio.cmdNone
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, AudioCmd Msg )
 update msg model =
     case ( msg, model ) of
         ( GameMsg gameMsg, WebAudioReady innerModel ) ->
@@ -96,30 +107,28 @@ update msg model =
                 { innerModel
                     | game = newGame
                 }
-            , audioCmd innerModel
+            , Cmd.none
+            , Audio.cmdNone
             )
 
         ( InitWebAudio, WaitingWebAudioInit ) ->
             ( model
-            , Cmd.batch
-                [ Task.map2
-                    (\now viewport ->
-                        { now = now
-                        , width = viewport.viewport.width
-                        , height = viewport.viewport.height
-                        }
-                    )
-                    Time.now
-                    Browser.Dom.getViewport
-                    |> Task.perform Init
-                , toWebAudio <| Json.Encode.list Json.Encode.int []
-                ]
+            , Task.map2
+                (\now viewport ->
+                    { now = now
+                    , width = viewport.viewport.width
+                    , height = viewport.viewport.height
+                    }
+                )
+                Time.now
+                Browser.Dom.getViewport
+                |> Task.perform Init
+            , Audio.cmdNone
             )
 
         ( Init flags, WaitingWebAudioInit ) ->
             let
-                game : Game.Model
-                game =
+                ( game, cmd ) =
                     Game.Update.init flags
 
                 innerModel : InnerModel
@@ -129,29 +138,30 @@ update msg model =
                     }
             in
             ( WebAudioReady innerModel
-            , audioCmd innerModel
+            , Cmd.none
+            , Audio.cmdMap GameMsg cmd
             )
 
         ( OnFocus, WebAudioReady innerModel ) ->
-            ( WebAudioReady { innerModel | focused = True }, audioCmd innerModel )
+            ( WebAudioReady { innerModel | focused = True }, Cmd.none, Audio.cmdNone )
 
         ( OnBlur, WebAudioReady innerModel ) ->
-            ( WebAudioReady { innerModel | focused = False }, audioCmd innerModel )
+            ( WebAudioReady { innerModel | focused = False }, Cmd.none, Audio.cmdNone )
 
         ( InitWebAudio, WebAudioReady _ ) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Audio.cmdNone )
 
         ( Init _, WebAudioReady _ ) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Audio.cmdNone )
 
         ( GameMsg _, WaitingWebAudioInit ) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Audio.cmdNone )
 
         ( OnFocus, WaitingWebAudioInit ) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Audio.cmdNone )
 
         ( OnBlur, WaitingWebAudioInit ) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Audio.cmdNone )
 
 
 view : Model -> Html Msg
@@ -196,23 +206,3 @@ subscriptions model =
 
         WaitingWebAudioInit ->
             Sub.none
-
-
-audio : InnerModel -> List WebAudio.Node
-audio model =
-    if model.focused && 1 == sqrt 2 then
-        [ WebAudio.oscillator
-            [ model.game
-                |> Game.Update.time
-                |> Time.posixToMillis
-                |> (\t -> t // 1000)
-                |> modBy 8
-                |> Audio.note
-                |> WebAudio.Property.frequency
-            ]
-            |> Audio.gain 0.2
-            |> Audio.destination
-        ]
-
-    else
-        []

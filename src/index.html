@@ -13,20 +13,12 @@
     <script src="/gamepadPort.js"></script>
     <script src="/elm-web-audio.js"></script>
     <script>
-      let virtualCtx = null;
-
       const app = Elm.Main.init({
         node: document.querySelector("main"),
         flags: {},
       });
 
-      app.ports.toWebAudio.subscribe((nodes) => {
-        if (!virtualCtx) {
-          const ctx = new AudioContext();
-          virtualCtx = new VirtualAudioGraph(ctx, { autostart: true });
-        }
-        virtualCtx.update(nodes);
-      });
+      startAudio(app);
 
       addGamepadPort(app);
 
