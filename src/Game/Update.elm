@@ -450,7 +450,13 @@ wallGenerator (( minX, minY ) as topLeft) (( maxX, maxY ) as bottomRight) =
                     (\maybeSplitC ->
                         case maybeSplitC of
                             Nothing ->
-                                Random.constant ( Set.empty, [] )
+                                Random.constant
+                                    ( Set.empty
+                                    , [ { topLeft = topLeft
+                                        , bottomRight = bottomRight
+                                        }
+                                      ]
+                                    )
 
                             Just splitC ->
                                 let
