@@ -389,6 +389,9 @@ toDigital string =
         " " ->
             Just A
 
+        "Backspace" ->
+            Just Back
+
         _ ->
             Nothing
 
