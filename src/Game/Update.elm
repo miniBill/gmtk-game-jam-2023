@@ -231,7 +231,7 @@ updateGuard frameStuff model guard =
         let
             waitTime : Float
             waitTime =
-                3 * (1000 + 3000 / toFloat model.level) / actionsPerSecond
+                (1000 + 3000 / toFloat model.level) / actionsPerSecond
         in
         case guard.behavior of
             RoamingRoom room ->
