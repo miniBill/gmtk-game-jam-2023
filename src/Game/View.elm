@@ -181,7 +181,9 @@ view model =
                 [ Html.text <|
                     "Good job, you reached level "
                         ++ String.fromInt level
-                        ++ " before dying a horrible, horrible death. Press 'r' or click to restart"
+                        ++ " before dying a horrible, horrible death."
+                , Html.br [] []
+                , Html.text "Press 'r' or click to restart."
                 ]
 
 
