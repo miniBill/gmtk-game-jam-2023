@@ -890,7 +890,7 @@ wasClicked key frameStuff model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize Resize
         , Browser.Events.onKeyDown (Decode.map KeyDown keyDecoder)
