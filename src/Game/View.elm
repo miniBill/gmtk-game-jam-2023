@@ -4,7 +4,7 @@ import Color
 import Dict
 import Dungeon.Tiles.Wall
 import Fonts
-import Game.Types exposing (Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond, move)
+import Game.Types exposing (Behavior(..), Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond, move)
 import Html exposing (Attribute, Html)
 import Html.Attributes
 import Html.Events
@@ -101,6 +101,7 @@ view model =
                             , Html.Attributes.style "transform" "rotate(-10deg)"
                             , Html.Attributes.style "background-color" "pink"
                             , Html.Attributes.style "padding" "0 2vmin"
+                            , Html.Attributes.style "color" "black"
                             ]
                             [ Html.text "PAUSED" ]
                         ]
@@ -110,10 +111,20 @@ view model =
                 ]
 
         Lost { level } ->
-            Html.text <|
-                "Good job, you reached level "
-                    ++ String.fromInt level
-                    ++ " before dying a horrible, horrible death"
+            Html.div
+                [ Html.Attributes.style "font-size" "3vmin"
+                , Html.Attributes.style "width" "50vmin"
+                , Html.Attributes.style "transform" "rotate(-10deg)"
+                , Html.Attributes.style "background-color" "pink"
+                , Html.Attributes.style "padding" "0 2vmin"
+                , Html.Attributes.style "color" "black"
+                , Html.Events.onClick ToMenu
+                ]
+                [ Html.text <|
+                    "Good job, you reached level "
+                        ++ String.fromInt level
+                        ++ " before dying a horrible, horrible death. Click to restart"
+                ]
 
 
 type alias Sprite msg =
@@ -138,26 +149,32 @@ viewGuard guard =
             move guard.direction guard.position
                 |> toFloatPosition
       in
-      case guard.direction of
-        Right ->
-            ( lightPosition
-            , Image.fromSrc Sprites.lightRight
-            )
+      ( lightPosition
+      , case ( guard.behavior, guard.direction ) of
+            ( RoamingRoom _, Right ) ->
+                Image.fromSrc Sprites.lightRight
 
-        Up ->
-            ( lightPosition
-            , Image.fromSrc Sprites.lightUp
-            )
+            ( RoamingRoom _, Up ) ->
+                Image.fromSrc Sprites.lightUp
 
-        Left ->
-            ( lightPosition
-            , Image.fromSrc Sprites.lightLeft
-            )
+            ( RoamingRoom _, Left ) ->
+                Image.fromSrc Sprites.lightLeft
 
-        Down ->
-            ( lightPosition
-            , Image.fromSrc Sprites.lightDown
-            )
+            ( RoamingRoom _, Down ) ->
+                Image.fromSrc Sprites.lightDown
+
+            ( SillyChasingHero, Right ) ->
+                Image.fromSrc Sprites.redLightRight
+
+            ( SillyChasingHero, Up ) ->
+                Image.fromSrc Sprites.redLightUp
+
+            ( SillyChasingHero, Left ) ->
+                Image.fromSrc Sprites.redLightLeft
+
+            ( SillyChasingHero, Down ) ->
+                Image.fromSrc Sprites.redLightDown
+      )
     ]
 
 

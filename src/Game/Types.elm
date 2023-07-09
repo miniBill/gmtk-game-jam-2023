@@ -1,4 +1,4 @@
-module Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move, moveDown, moveLeft, moveRight, moveUp)
+module Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move)
 
 import Audio exposing (Source)
 import Dict exposing (Dict)
@@ -34,10 +34,7 @@ type alias Effect =
 type InnerModel
     = Menu {}
     | Playing PlayingModel
-    | Lost
-        { level : Int
-        , sources : Dict String Source
-        }
+    | Lost { level : Int }
 
 
 type Msg
@@ -46,6 +43,7 @@ type Msg
     | KeyDown Digital
     | KeyUp Digital
     | Start
+    | ToMenu
     | Loaded String (Result Audio.LoadError Source)
     | MenuHover
     | CleanQueue
@@ -65,6 +63,8 @@ type alias PlayingModel =
     , rolls : Dict Position Roll
     , level : Int
     , panicLevel : Float
+    , lastPanicIncreaseAt : Time.Posix
+    , lastPanicDecreaseAt : Time.Posix
     , lastWonAt : Maybe Time.Posix
     , paused : Bool
     , guards : List Guard

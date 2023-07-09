@@ -8,7 +8,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Duration
 import EverySet
-import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move, moveDown, moveUp)
+import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -17,7 +17,6 @@ import Random exposing (Generator)
 import Random.Extra
 import Random.List
 import Set exposing (Set)
-import Sprites exposing (guard)
 import Time
 
 
@@ -38,7 +37,7 @@ update msg model =
             { model
                 | effects =
                     List.filter
-                        (\( _, at ) -> Time.posixToMillis model.now - Time.posixToMillis at < 5000)
+                        (\( _, at ) -> deltaT model at < 5000)
                         model.effects
             }
 
@@ -52,10 +51,13 @@ update msg model =
             }
                 |> queueEffect AudioSources.Effects.menuClick
 
-        ( Start, Lost _ ) ->
-            { model | inner = Playing <| initPlaying model }
+        ( Start, _ ) ->
+            model
 
-        ( Start, Playing _ ) ->
+        ( ToMenu, Lost _ ) ->
+            { model | inner = Menu {} }
+
+        ( ToMenu, _ ) ->
             model
 
         ( Tick frameStuff, Menu _ ) ->
@@ -73,14 +75,20 @@ update msg model =
                         |> updatePipe (updateHeroPosition fixed)
                         |> updatePipe (updateGuardsPosition fixed)
                         |> updatePipe (updateReversing fixed model)
+                        |> updatePipe (increasePanic model)
+                        |> updatePipe (decreasePanic model)
                         |> updatePipe (maybeReset fixed model)
                         |> updatePipe moveToPrevious
+
+                newModel : Model
+                newModel =
+                    { model
+                        | now = fixed.timestamp
+                        , inner = Playing newInnerModel
+                        , effects = newEffects ++ model.effects
+                    }
             in
-            { model
-                | now = fixed.timestamp
-                , inner = Playing newInnerModel
-                , effects = newEffects ++ model.effects
-            }
+            checkDeath newModel newInnerModel
 
         ( Tick frameStuff, Lost _ ) ->
             { model | now = frameStuff.timestamp }
@@ -122,6 +130,76 @@ update msg model =
             { model | sources = Dict.insert key source model.sources }
 
 
+checkDeath : Model -> PlayingModel -> Model
+checkDeath model playingModel =
+    let
+        isDeaded : Bool
+        isDeaded =
+            List.any
+                (\guard -> guard.position == playingModel.heroPosition)
+                playingModel.guards
+    in
+    if isDeaded then
+        { model
+            | inner = Lost { level = playingModel.level }
+            , effects =
+                ( AudioSources.Effects.lose, model.now )
+                    :: model.effects
+        }
+
+    else
+        model
+
+
+{-| Time elapsed since the given instant.
+-}
+deltaT : Model -> Time.Posix -> Float
+deltaT model old =
+    toFloat <| Time.posixToMillis model.now - Time.posixToMillis old
+
+
+increasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
+increasePanic model playingModel =
+    if deltaT model playingModel.lastPanicIncreaseAt < 1000 then
+        ( playingModel, [] )
+
+    else
+        let
+            guardHasSpotted : { a | direction : Direction, position : Position } -> Bool
+            guardHasSpotted guard =
+                move guard.direction guard.position == playingModel.heroPosition
+
+            isSpotted : Bool
+            isSpotted =
+                List.any guardHasSpotted playingModel.guards
+        in
+        if isSpotted then
+            ( { playingModel
+                | panicLevel = clamp 0 1 <| 0.5 + playingModel.panicLevel
+                , lastPanicIncreaseAt = model.now
+                , lastPanicDecreaseAt = model.now -- prevent immediate decrease
+              }
+            , [ ( AudioSources.Effects.spotted, model.now ) ]
+            )
+
+        else
+            ( playingModel, [] )
+
+
+decreasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
+decreasePanic model playingModel =
+    if deltaT model playingModel.lastPanicDecreaseAt < 1000 then
+        ( playingModel, [] )
+
+    else
+        ( { playingModel
+            | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.1
+            , lastPanicDecreaseAt = model.now
+          }
+        , []
+        )
+
+
 updateGuardsPosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
 updateGuardsPosition frameStuff model =
     if model.paused then
@@ -156,15 +234,15 @@ updateGuard frameStuff model guard =
 
                     newDirection : Direction
                     newDirection =
-                        if wantedX <= minX || wantedX >= maxX then
-                            if wantedY <= minY + 1 then
+                        if wantedX == minX || wantedX == maxX then
+                            if wantedY == minY + 1 then
                                 Down
 
                             else
                                 Up
 
-                        else if wantedY <= minY || wantedY >= maxY then
-                            if wantedX <= minX + 1 then
+                        else if wantedY == minY || wantedY == maxY then
+                            if wantedX == minX + 1 then
                                 Right
 
                             else
@@ -172,12 +250,23 @@ updateGuard frameStuff model guard =
 
                         else
                             guard.direction
+
+                    waitTime : Float
+                    waitTime =
+                        (1000 + 3000 / toFloat model.level) / actionsPerSecond
                 in
-                { guard
-                    | position = move newDirection guard.position
-                    , direction = newDirection
-                    , waitTime = (1000 + 3000 / toFloat model.level) / actionsPerSecond
-                }
+                if newDirection == guard.direction then
+                    { guard
+                        | position =
+                            move guard.direction guard.position
+                        , waitTime = waitTime
+                    }
+
+                else
+                    { guard
+                        | direction = newDirection
+                        , waitTime = waitTime / 2
+                    }
 
             SillyChasingHero ->
                 let
@@ -693,6 +782,8 @@ initPlaying flags =
     , rolls = createRolls flags.now rooms
     , level = 1
     , panicLevel = 0
+    , lastPanicIncreaseAt = flags.now
+    , lastPanicDecreaseAt = flags.now
     , lastWonAt = Nothing
     , paused = False
     , guards = []
@@ -1056,12 +1147,7 @@ fadeForVictory : Model -> Maybe Time.Posix -> Float
 fadeForVictory model lastWonAt =
     case lastWonAt of
         Just at ->
-            let
-                dt : Int
-                dt =
-                    Time.posixToMillis model.now - Time.posixToMillis at
-            in
-            clamp 0.25 1 (0.25 + toFloat dt * 0.75 / 4806.5)
+            clamp 0.25 1 (0.25 + deltaT model at * 0.75 / 4806.5)
 
         Nothing ->
             1
