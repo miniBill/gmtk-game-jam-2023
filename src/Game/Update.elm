@@ -188,7 +188,7 @@ increasePanic model playingModel =
 
 decreasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
 decreasePanic model playingModel =
-    if deltaT model playingModel.lastPanicDecreaseAt < 1000 then
+    if deltaT model playingModel.lastPanicDecreaseAt < 300 * toFloat playingModel.level then
         ( playingModel, [] )
 
     else
@@ -282,52 +282,56 @@ updateGuard frameStuff model guard =
                     movedGuard
 
             SillyChasingHero ->
-                let
-                    ( heroX, heroY ) =
-                        model.heroPosition
-
-                    ( guardX, guardY ) =
-                        guard.position
-
-                    isFree : Direction -> Bool
-                    isFree direction =
-                        not (Set.member (move direction guard.position) model.walls)
-
-                    newDirection : Direction
-                    newDirection =
-                        if heroX > guardX && isFree Right then
-                            Right
-
-                        else if heroX < guardX && isFree Left then
-                            Left
-
-                        else if heroY > guardY && isFree Down then
-                            Down
-
-                        else if heroY < guardY && isFree Up then
-                            Up
-
-                        else
-                            guard.direction
-
-                    newPosition : Position
-                    newPosition =
-                        move newDirection guard.position
-                in
-                if Set.member newPosition model.walls then
-                    { guard | direction = newDirection }
-
-                else if newDirection == guard.direction then
-                    { guard
-                        | position = newPosition
-                        , waitTime = waitTime
-                    }
+                if model.panicLevel == 0 then
+                    guard
 
                 else
-                    { guard
-                        | direction = newDirection
-                        , waitTime = waitTime / 2
-                    }
+                    let
+                        ( heroX, heroY ) =
+                            model.heroPosition
+
+                        ( guardX, guardY ) =
+                            guard.position
+
+                        isFree : Direction -> Bool
+                        isFree direction =
+                            not (Set.member (move direction guard.position) model.walls)
+
+                        newDirection : Direction
+                        newDirection =
+                            if heroX > guardX && isFree Right then
+                                Right
+
+                            else if heroX < guardX && isFree Left then
+                                Left
+
+                            else if heroY > guardY && isFree Down then
+                                Down
+
+                            else if heroY < guardY && isFree Up then
+                                Up
+
+                            else
+                                guard.direction
+
+                        newPosition : Position
+                        newPosition =
+                            move newDirection guard.position
+                    in
+                    if Set.member newPosition model.walls then
+                        { guard | direction = newDirection }
+
+                    else if newDirection == guard.direction then
+                        { guard
+                            | position = newPosition
+                            , waitTime = waitTime
+                        }
+
+                    else
+                        { guard
+                            | direction = newDirection
+                            , waitTime = waitTime / 2
+                        }
 
 
 queueEffect : String -> Model -> Model
