@@ -123,6 +123,11 @@ update msg model =
                         |> Playing
             }
 
+        ( KeyUp Gamepad.A, Lost _ ) ->
+            { model
+                | inner = Playing <| initPlaying model
+            }
+
         ( KeyDown _, _ ) ->
             model
 
@@ -538,7 +543,7 @@ moveToPrevious model =
 
 debugging : Bool
 debugging =
-    True
+    False
 
 
 maybeReset : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
@@ -885,7 +890,7 @@ wasClicked key frameStuff model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Browser.Events.onResize Resize
         , Browser.Events.onKeyDown (Decode.map KeyDown keyDecoder)
@@ -941,7 +946,7 @@ toDigital string =
         "e" ->
             Just Gamepad.Y
 
-        "c" ->
+        "r" ->
             Just Gamepad.A
 
         " " ->
