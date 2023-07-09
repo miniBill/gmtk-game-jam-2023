@@ -103,8 +103,7 @@ fileToGen moduleName { filename, contents } =
                             Image.dimensions image
                     in
                     if
-                        List.member "Dungeon" moduleName
-                            || List.member "Fonts" moduleName
+                        List.member "Fonts" moduleName
                             || List.member "Sprites" moduleName
                             || String.contains "spritesheet" name
                     then

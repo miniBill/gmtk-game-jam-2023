@@ -3,7 +3,6 @@ module Game.View exposing (center, view)
 import Color
 import Css
 import Dict
-import Dungeon.Tiles.Wall
 import Fonts
 import Game.Types exposing (Behavior(..), Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond, move)
 import Html exposing (Attribute, Html)
@@ -135,7 +134,7 @@ view model =
                         { height = toFloat innerModel.gameHeight * tileSize
                         , background =
                             PixelEngine.imageBackground
-                                { source = "/img/Dungeon/tiles/floor/floor_5.png"
+                                { source = Sprites.floor
                                 , width = 16
                                 , height = 16
                                 }
@@ -266,9 +265,7 @@ viewWalls model =
 viewWall : Position -> Sprite msg
 viewWall position =
     ( toFloatPosition position
-    , Image.fromTile
-        (Tile.fromPosition ( 0, 0 ))
-        Dungeon.Tiles.Wall.wall1
+    , Image.fromSrc Sprites.wall
     )
 
 
