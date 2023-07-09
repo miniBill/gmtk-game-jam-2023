@@ -1275,7 +1275,7 @@ music model key at =
 
 loadAudio : String -> AudioCmd Msg
 loadAudio key =
-    Audio.loadAudio (Loaded key) <| "/audio/" ++ key
+    Audio.loadAudio (Loaded key) <| "audio/" ++ key
 
 
 fadeForVictory : Model -> Maybe Time.Posix -> Float
