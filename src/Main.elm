@@ -3,6 +3,7 @@ port module Main exposing (Flags, Model, Msg, main)
 import Audio exposing (Audio, AudioCmd)
 import AudioSources.Music
 import Browser.Dom
+import Browser.Events
 import Game.Types as Game
 import Game.Update
 import Game.View
@@ -203,11 +204,21 @@ center =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
-        WebAudioReady innerModel ->
+        WebAudioReady { game } ->
             Sub.batch
                 [ onfocus <| \_ -> OnFocus
                 , onblur <| \_ -> OnBlur
-                , Sub.map GameMsg <| Game.Update.subscriptions innerModel.game
+                , Sub.map GameMsg <|
+                    Game.Update.subscriptions game
+                , Browser.Events.onAnimationFrame
+                    (\newTime ->
+                        { dt = toFloat <| Time.posixToMillis newTime - Time.posixToMillis game.now
+                        , timestamp = newTime
+                        , gamepads = []
+                        }
+                            |> Game.Update.onAnimationFrame
+                            |> GameMsg
+                    )
                 ]
 
         WaitingWebAudioInit ->

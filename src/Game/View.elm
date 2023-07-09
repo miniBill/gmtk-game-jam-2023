@@ -298,7 +298,7 @@ viewAnimated { position, spritesheet, key } =
             |> Tile.animated spritesheet.widthInTiles
         )
         spritesheet.tileset
-        |> Image.movable key
+      -- |> Image.movable key
     )
 
 

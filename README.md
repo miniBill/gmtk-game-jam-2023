@@ -1,5 +1,7 @@
 # TODO
 
+- enemies
+- movement - again
 - pause menu
 - credits
 - gamepad
