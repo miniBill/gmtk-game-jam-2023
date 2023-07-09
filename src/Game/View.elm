@@ -78,9 +78,6 @@ view model =
                     ++ String.fromInt level
                     ++ " before dying a horrible, horrible death"
 
-        _ ->
-            Debug.todo "Pause/Won"
-
 
 viewRolls : PlayingModel -> List ( ( Float, Float ), Image msg )
 viewRolls model =
