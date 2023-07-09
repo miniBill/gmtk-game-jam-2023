@@ -8,7 +8,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Duration
 import EverySet
-import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond)
+import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -17,6 +17,7 @@ import Random exposing (Generator)
 import Random.Extra
 import Random.List
 import Set exposing (Set)
+import Sprites exposing (guard)
 import Time
 
 
@@ -128,6 +129,7 @@ updateGuardsPosition frameStuff model =
 
     else
         let
+            newModel : PlayingModel
             newModel =
                 { model | guards = List.map (updateGuard frameStuff model) model.guards }
         in
@@ -136,20 +138,24 @@ updateGuardsPosition frameStuff model =
 
 updateGuard : FrameStuff -> PlayingModel -> Guard -> Guard
 updateGuard frameStuff model guard =
-    case guard.behavior of
-        RoamingRoom room ->
-            let
-                _ =
-                    Debug.todo
-            in
-            guard
+    if guard.waitTime > 0 then
+        { guard | waitTime = max 0 <| guard.waitTime - frameStuff.dt }
 
-        SillyChasingHero ->
-            let
-                _ =
-                    Debug.todo
-            in
-            guard
+    else
+        case guard.behavior of
+            RoamingRoom room ->
+                let
+                    (( wantedX, wantedY ) as wantedPosition) =
+                        move guard.direction guard.position
+                in
+                guard
+
+            SillyChasingHero ->
+                let
+                    _ =
+                        Debug.todo
+                in
+                guard
 
 
 queueEffect : String -> Model -> Model
@@ -227,6 +233,7 @@ regen now playingModel =
 createGuards : Time.Posix -> List Room -> Int -> List Guard
 createGuards now rooms level =
     let
+        guardsCount : Int
         guardsCount =
             if level < 3 then
                 0
@@ -254,6 +261,7 @@ createGuardInRoom room =
         else
             Right
     , behavior = RoamingRoom room
+    , waitTime = 0
     }
 
 
@@ -408,13 +416,8 @@ updateHeroPosition frameStuff model =
                     else
                         0
 
-                positionX : Int
-                positionX =
-                    Tuple.first model.heroPosition
-
-                positionY : Int
-                positionY =
-                    Tuple.second model.heroPosition
+                ( positionX, positionY ) =
+                    model.heroPosition
 
                 wantedDx : number
                 wantedDx =
@@ -771,25 +774,15 @@ openDoors bottomRight ( walls, rooms ) =
 openDoor : Position -> Room -> Set Position -> Generator (Set Position)
 openDoor bottomRight room =
     let
-        minX : Int
-        minX =
-            Tuple.first room.topLeft
+        ( minX, minY ) =
+            room.topLeft
 
-        minY : Int
-        minY =
-            Tuple.second room.topLeft
-
-        maxX : Int
-        maxX =
-            Tuple.first room.bottomRight
-
-        maxY : Int
-        maxY =
-            Tuple.second room.bottomRight
+        ( maxX, maxY ) =
+            room.bottomRight
 
         rightHole : Set Position -> Generator (Set Position)
         rightHole walls =
-            if maxX /= Tuple.first bottomRight then
+            if not rightmostRoom then
                 List.range (minY + 1) (maxY - 1)
                     |> List.filter (\y -> not <| Set.member ( maxX + 1, y ) walls)
                     |> List.map (\y -> ( maxX, y ))
@@ -809,7 +802,7 @@ openDoor bottomRight room =
 
         bottomHole : Set Position -> Generator (Set Position)
         bottomHole walls =
-            if maxY /= Tuple.second bottomRight then
+            if not bottommostRoom then
                 List.range (minX + 1) (maxX - 1)
                     |> List.filter (\x -> not <| Set.member ( x, maxY + 1 ) walls)
                     |> List.map (\x -> ( x, maxY ))
@@ -826,6 +819,14 @@ openDoor bottomRight room =
 
             else
                 Random.constant walls
+
+        rightmostRoom : Bool
+        rightmostRoom =
+            maxX == Tuple.first bottomRight
+
+        bottommostRoom : Bool
+        bottommostRoom =
+            maxY == Tuple.second bottomRight
     in
     \walls ->
         walls

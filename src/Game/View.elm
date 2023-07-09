@@ -4,7 +4,7 @@ import Color
 import Dict
 import Dungeon.Tiles.Wall
 import Fonts
-import Game.Types exposing (Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond, move)
 import Html exposing (Attribute, Html)
 import Html.Attributes
 import Html.Events
@@ -125,52 +125,35 @@ viewGuard guard =
     [ ( toFloatPosition guard.position
       , Image.fromTile
             (Tile.fromPosition ( 0, 0 ))
-        <|
-            case guard.direction of
-                _ ->
-                    Sprites.guard
+            Sprites.guard
       )
-    , case guard.direction of
+    , let
+        lightPosition : ( Float, Float )
+        lightPosition =
+            move guard.direction guard.position
+                |> toFloatPosition
+      in
+      case guard.direction of
         Right ->
-            ( toFloatPosition (guard.position |> moveRight)
+            ( lightPosition
             , Image.fromSrc Sprites.lightRight
             )
 
         Up ->
-            ( toFloatPosition (guard.position |> moveUp)
+            ( lightPosition
             , Image.fromSrc Sprites.lightUp
             )
 
         Left ->
-            ( toFloatPosition (guard.position |> moveLeft)
+            ( lightPosition
             , Image.fromSrc Sprites.lightLeft
             )
 
         Down ->
-            ( toFloatPosition (guard.position |> moveDown)
+            ( lightPosition
             , Image.fromSrc Sprites.lightDown
             )
     ]
-
-
-moveRight : Position -> Position
-moveRight ( x, y ) =
-    ( x + 1, y )
-
-
-moveLeft : Position -> Position
-moveLeft ( x, y ) =
-    ( x - 1, y )
-
-
-moveDown : Position -> Position
-moveDown ( x, y ) =
-    ( x, y + 1 )
-
-
-moveUp : Position -> Position
-moveUp ( x, y ) =
-    ( x, y - 1 )
 
 
 viewRolls : PlayingModel -> List (Sprite msg)
@@ -343,21 +326,22 @@ statusMessageHeight =
     2
 
 
-viewAnimated :
-    { position : Position
-    , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
-    , key : String
-    }
-    -> Sprite msg
-viewAnimated { position, spritesheet, key } =
-    ( toFloatPosition position
-    , Image.fromTile
-        (Tile.fromPosition ( 0, 0 )
-            |> Tile.animated spritesheet.widthInTiles
-        )
-        spritesheet.tileset
-      -- |> Image.movable key
-    )
+
+-- viewAnimated :
+--     { position : Position
+--     , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
+--     , key : String
+--     }
+--     -> Sprite msg
+-- viewAnimated { position, spritesheet, key } =
+--     ( toFloatPosition position
+--     , Image.fromTile
+--         (Tile.fromPosition ( 0, 0 )
+--             |> Tile.animated spritesheet.widthInTiles
+--         )
+--         spritesheet.tileset
+--       -- |> Image.movable key
+--     )
 
 
 toFloatPosition : Position -> ( Float, Float )

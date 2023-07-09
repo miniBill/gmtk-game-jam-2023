@@ -1,4 +1,4 @@
-module Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond)
+module Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move, moveDown, moveLeft, moveRight, moveUp)
 
 import Audio exposing (Source)
 import Dict exposing (Dict)
@@ -73,6 +73,7 @@ type alias PlayingModel =
 
 type alias Guard =
     { position : Position
+    , waitTime : Float
     , direction : Direction
     , behavior : Behavior
     }
@@ -116,3 +117,39 @@ type alias Position =
 actionsPerSecond : number
 actionsPerSecond =
     4
+
+
+move : Direction -> Position -> Position
+move direction position =
+    case direction of
+        Left ->
+            moveLeft position
+
+        Up ->
+            moveUp position
+
+        Right ->
+            moveRight position
+
+        Down ->
+            moveDown position
+
+
+moveRight : Position -> Position
+moveRight ( x, y ) =
+    ( x + 1, y )
+
+
+moveLeft : Position -> Position
+moveLeft ( x, y ) =
+    ( x - 1, y )
+
+
+moveDown : Position -> Position
+moveDown ( x, y ) =
+    ( x, y + 1 )
+
+
+moveUp : Position -> Position
+moveUp ( x, y ) =
+    ( x, y - 1 )
