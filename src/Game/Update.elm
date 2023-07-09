@@ -231,6 +231,7 @@ updateGuard frameStuff model guard =
         let
             waitTime : Float
             waitTime =
+                -- Guards are always slower than the hero, but less and less
                 (1000 + 3000 / toFloat model.level) / actionsPerSecond
         in
         case guard.behavior of
