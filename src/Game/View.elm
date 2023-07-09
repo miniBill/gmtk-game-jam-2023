@@ -1,6 +1,7 @@
 module Game.View exposing (center, view)
 
 import Color
+import Css
 import Dict
 import Dungeon.Tiles.Wall
 import Fonts
@@ -8,6 +9,8 @@ import Game.Types exposing (Behavior(..), Direction(..), Guard, InnerModel(..), 
 import Html exposing (Attribute, Html)
 import Html.Attributes
 import Html.Events
+import Html.Styled as Styled
+import Html.Styled.Events as StyledEvents
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
@@ -22,49 +25,99 @@ tileSize =
     16
 
 
-button : List (Attribute msg) -> List (Html msg) -> Html msg
-button attrs children =
-    Html.div
-        (Html.Attributes.style "border" "1px solid white"
-            :: Html.Attributes.style "padding" "10px"
-            :: Html.Attributes.style "cursor" "pointer"
-            :: attrs
-        )
-        children
+button :
+    List (Styled.Attribute Msg)
+    ->
+        { onPress : Msg
+        , label : String
+        }
+    -> Styled.Html Msg
+button attrs config =
+    Styled.styled Styled.div
+        [ Css.border3 (Css.px 1) Css.solid (Css.rgb 255 255 255)
+        , Css.padding (Css.px 10)
+        , Css.cursor Css.pointer
+        , Css.margin Css.auto
+        , Css.hover [ Css.backgroundColor <| Css.rgb 128 128 128 ]
+        , Css.backgroundColor <| Css.rgb 0 0 0
+        , Css.width <| Css.pct 100
+        , Css.textAlign Css.center
+        ]
+        (StyledEvents.onMouseEnter MenuHover :: StyledEvents.onClick config.onPress :: attrs)
+        [ Styled.text config.label ]
+
+
+muteButtons : Model -> Styled.Html Msg
+muteButtons model =
+    Styled.styled Styled.div
+        [ Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.color <| Css.rgb 255 255 255
+        , Css.property "gap" "10px"
+        ]
+        []
+        [ button []
+            { onPress = MuteAll
+            , label =
+                if model.mainVolume > 0 then
+                    "MUTE ALL"
+
+                else
+                    "UNMUTE ALL"
+            }
+        , button []
+            { onPress = MuteMusic
+            , label =
+                if model.musicVolume > 0 then
+                    "MUTE MUSIC"
+
+                else
+                    "UNMUTE MUSIC"
+            }
+        , button []
+            { onPress = MuteEffects
+            , label =
+                if model.effectsVolume > 0 then
+                    "MUTE EFFECTS"
+
+                else
+                    "UNMUTE EFFECTS"
+            }
+        ]
 
 
 view : Model -> Html Msg
 view model =
     case model.inner of
         Menu _ ->
-            Html.div []
-                [ button
-                    [ Html.Events.onClick Start
-                    , Html.Events.onMouseEnter MenuHover
+            Styled.toUnstyled <|
+                Styled.styled Styled.div
+                    [ Css.displayFlex
+                    , Css.flexDirection Css.column
+                    , Css.color <| Css.rgb 255 255 255
+                    , Css.property "gap" "10px"
                     ]
-                    [ Html.text "START PLAYING" ]
-                , Html.br [] []
-                , Html.br [] []
-                , button
-                    [ Html.Events.onClick Start
-                    , Html.Events.onMouseEnter MenuHover
+                    []
+                    [ button []
+                        { onPress = Start
+                        , label = "START PLAYING"
+                        }
+                    , muteButtons model
+                    , Styled.styled Styled.div
+                        [ Css.textAlign Css.center
+                        , Css.backgroundColor <| Css.rgb 0 0 0
+                        ]
+                        []
+                        [ Styled.text "Use arrow keys or WASD to move,"
+                        ]
+                    , Styled.styled Styled.div
+                        [ Css.textAlign Css.center
+                        , Css.backgroundColor <| Css.rgb 0 0 0
+                        ]
+                        []
+                        [ Styled.text "press Space to pause."
+                        ]
                     ]
-                    [ Html.text "START PLAYING" ]
-                , Html.br [] []
-                , Html.br [] []
-                , button
-                    [ Html.Events.onClick Start
-                    , Html.Events.onMouseEnter MenuHover
-                    ]
-                    [ Html.text "START PLAYING" ]
-                , Html.br [] []
-                , Html.br [] []
-                , button
-                    [ Html.Events.onClick Start
-                    , Html.Events.onMouseEnter MenuHover
-                    ]
-                    [ Html.text "START PLAYING" ]
-                ]
 
         Playing innerModel ->
             Html.div []
@@ -95,15 +148,21 @@ view model =
                     , viewStatusMessage innerModel
                     ]
                 , if innerModel.paused then
-                    center []
+                    center [ Html.Attributes.style "gap" "10vmin" ]
                         [ Html.span
                             [ Html.Attributes.style "font-size" "10vmin"
                             , Html.Attributes.style "transform" "rotate(-10deg)"
-                            , Html.Attributes.style "background-color" "pink"
+                            , Html.Attributes.style "background" "pink"
                             , Html.Attributes.style "padding" "0 2vmin"
                             , Html.Attributes.style "color" "black"
                             ]
                             [ Html.text "PAUSED" ]
+                        , Styled.toUnstyled <| muteButtons model
+                        , Html.span
+                            [ Html.Attributes.style "background" "black"
+                            , Html.Attributes.style "padding" "10px"
+                            ]
+                            [ Html.text "Press Space to resume" ]
                         ]
 
                   else
@@ -115,7 +174,7 @@ view model =
                 [ Html.Attributes.style "font-size" "3vmin"
                 , Html.Attributes.style "width" "50vmin"
                 , Html.Attributes.style "transform" "rotate(-10deg)"
-                , Html.Attributes.style "background-color" "pink"
+                , Html.Attributes.style "background" "pink"
                 , Html.Attributes.style "padding" "0 2vmin"
                 , Html.Attributes.style "color" "black"
                 , Html.Events.onClick ToMenu
@@ -387,6 +446,7 @@ center attrs =
             :: Html.Attributes.style "width" "100vw"
             :: Html.Attributes.style "height" "100vh"
             :: Html.Attributes.style "display" "flex"
+            :: Html.Attributes.style "flex-direction" "column"
             :: Html.Attributes.style "color" "white"
             :: Html.Attributes.style "align-items" "center"
             :: Html.Attributes.style "justify-content" "center"

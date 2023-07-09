@@ -1,9 +1,10 @@
 # TODO
 
-- enemies
+- better enemies
+  - maybechase
+  - mayberandom
+  - start random
 - movement - redo
-- pause menu
-  - audio controls
 - credits
 - gamepad
 

@@ -34,6 +34,15 @@ minSideLength =
 update : Msg -> Model -> Model
 update msg model =
     case ( msg, model.inner ) of
+        ( MuteAll, _ ) ->
+            { model | mainVolume = 1 - model.mainVolume }
+
+        ( MuteMusic, _ ) ->
+            { model | musicVolume = 1 - model.musicVolume }
+
+        ( MuteEffects, _ ) ->
+            { model | effectsVolume = 1 - model.effectsVolume }
+
         ( CleanQueue, _ ) ->
             { model
                 | effects =
@@ -854,6 +863,9 @@ init flags =
       , height = flags.height
       , sources = Dict.empty
       , inner = Menu {}
+      , mainVolume = 0.5
+      , musicVolume = 1
+      , effectsVolume = 1
       }
         |> queueEffect AudioSources.Music.menuIntro
     , AudioSources.all
@@ -1204,7 +1216,7 @@ audio model =
                 |> List.map
                     (\( key, volume ) ->
                         music model key musicAt
-                            |> Audio.scaleVolume (volume model model.inner)
+                            |> Audio.scaleVolume (model.musicVolume * volume model model.inner)
                     )
 
         effects : List Audio
@@ -1212,14 +1224,13 @@ audio model =
             List.map
                 (\( key, at ) ->
                     effect model key at
-                        |> Audio.scaleVolume 1
+                        |> Audio.scaleVolume model.effectsVolume
                 )
                 model.effects
     in
-    Audio.group
-        (effects ++ tracks)
-        |> Audio.scaleVolume 0.2
-        |> Audio.scaleVolume 0.5
+    (effects ++ tracks)
+        |> Audio.group
+        |> Audio.scaleVolume (0.5 * model.mainVolume)
 
 
 effect : Model -> String -> Time.Posix -> Audio

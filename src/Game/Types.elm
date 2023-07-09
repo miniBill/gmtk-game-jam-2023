@@ -24,6 +24,9 @@ type alias Model =
     , height : Float
     , sources : Dict String Source
     , inner : InnerModel
+    , mainVolume : Float
+    , musicVolume : Float
+    , effectsVolume : Float
     }
 
 
@@ -47,6 +50,9 @@ type Msg
     | Loaded String (Result Audio.LoadError Source)
     | MenuHover
     | CleanQueue
+    | MuteAll
+    | MuteMusic
+    | MuteEffects
 
 
 type alias PlayingModel =
