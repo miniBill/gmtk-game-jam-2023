@@ -1,4 +1,4 @@
-module Game.Types exposing (Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+module Game.Types exposing (Effect, Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 
 import Audio exposing (Source)
 import Dict exposing (Dict)
@@ -19,12 +19,16 @@ type alias Flags =
 type alias Model =
     { now : Time.Posix
     , startTime : Time.Posix
-    , effects : List ( String, Time.Posix )
+    , effects : List Effect
     , width : Float
     , height : Float
     , sources : Dict String Source
     , inner : InnerModel
     }
+
+
+type alias Effect =
+    ( String, Time.Posix )
 
 
 type InnerModel

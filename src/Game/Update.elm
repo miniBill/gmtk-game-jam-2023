@@ -8,7 +8,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Duration
 import EverySet
-import Game.Types exposing (Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Effect, Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -67,16 +67,18 @@ update msg model =
                 fixed : FrameStuff
                 fixed =
                     { frameStuff | dt = min 200 frameStuff.dt }
+
+                ( newInnerModel, newEffects ) =
+                    ( innerModel, [] )
+                        |> updatePipe (updatePosition fixed)
+                        |> updatePipe (updateReversing fixed model)
+                        |> updatePipe (maybeReset fixed model)
+                        |> updatePipe moveToPrevious
             in
             { model
                 | now = fixed.timestamp
-                , inner =
-                    innerModel
-                        |> updatePosition fixed
-                        |> updateReversing fixed model
-                        |> maybeReset fixed model
-                        |> moveToPrevious
-                        |> Playing
+                , inner = Playing newInnerModel
+                , effects = newEffects ++ model.effects
             }
 
         ( Tick frameStuff, Lost _ ) ->
@@ -121,36 +123,54 @@ update msg model =
             Debug.todo "Won"
 
 
-moveToPrevious : PlayingModel -> PlayingModel
+updatePipe :
+    (PlayingModel -> ( PlayingModel, List Effect ))
+    -> ( PlayingModel, List Effect )
+    -> ( PlayingModel, List Effect )
+updatePipe f ( model, oldEffects ) =
+    let
+        ( newModel, newEffects ) =
+            f model
+    in
+    ( newModel, newEffects ++ oldEffects )
+
+
+moveToPrevious : PlayingModel -> ( PlayingModel, List Effect )
 moveToPrevious model =
-    { model
+    ( { model
         | previous =
             { keyboardPressed = model.keyboardPressed
             , heroPosition = model.heroPosition
             }
-    }
+      }
+    , []
+    )
 
 
-maybeReset : FrameStuff -> Model -> PlayingModel -> PlayingModel
+maybeReset : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
 maybeReset frameStuff model playingModel =
     let
         _ =
             Debug.todo
     in
     if wasReleased Gamepad.Back frameStuff playingModel then
-        toLevel 1 model playingModel
+        ( toLevel 1 model playingModel
+        , [ ( AudioSources.Effects.lose, model.now ) ]
+        )
 
     else if wasReleased Gamepad.A frameStuff playingModel then
-        toLevel (playingModel.level + 1) model playingModel
+        ( toLevel (playingModel.level + 1) model playingModel
+        , [ ( AudioSources.Effects.victory, model.now ) ]
+        )
 
     else if wasReleased Gamepad.Y frameStuff playingModel then
-        { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }
+        ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }, [] )
 
     else if wasReleased Gamepad.X frameStuff playingModel then
-        { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }
+        ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }, [] )
 
     else
-        playingModel
+        ( playingModel, [] )
 
 
 regen : Model -> PlayingModel -> PlayingModel
@@ -166,22 +186,24 @@ regen model playingModel =
     }
 
 
-updateReversing : FrameStuff -> Model -> PlayingModel -> PlayingModel
+updateReversing : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
 updateReversing _ model playingModel =
     let
-        tryFlip : Position -> Dict Position Roll -> Dict Position Roll
-        tryFlip position rolls =
+        tryFlip : Position -> ( Dict Position Roll, Bool ) -> ( Dict Position Roll, Bool )
+        tryFlip position ( rolls, alreadyFlipped ) =
             case
                 Dict.get position rolls
             of
                 Just roll ->
-                    Dict.insert
+                    ( Dict.insert
                         position
                         { roll | reversed = True }
                         rolls
+                    , alreadyFlipped || not roll.reversed
+                    )
 
                 _ ->
-                    rolls
+                    ( rolls, alreadyFlipped )
 
         diagonals : Maybe ( Position, Position )
         diagonals =
@@ -210,35 +232,39 @@ updateReversing _ model playingModel =
             else
                 Nothing
 
-        normalFlip : Dict Position Roll
-        normalFlip =
+        ( afterFlip, flipped ) =
             case diagonals of
                 Nothing ->
-                    playingModel.rolls
+                    ( playingModel.rolls, False )
                         |> tryFlip playingModel.heroPosition
 
                 Just ( diag1, diag2 ) ->
-                    playingModel.rolls
+                    ( playingModel.rolls, False )
                         |> tryFlip playingModel.heroPosition
                         |> tryFlip diag1
                         |> tryFlip diag2
 
         newPlayingModel : PlayingModel
         newPlayingModel =
-            { playingModel
-                | rolls =
-                    normalFlip
-            }
+            { playingModel | rolls = afterFlip }
     in
     if
         List.all
             (\( _, { reversed } ) -> reversed)
             (Dict.toList newPlayingModel.rolls)
     then
-        toLevel (newPlayingModel.level + 1) model newPlayingModel
+        ( toLevel (newPlayingModel.level + 1) model newPlayingModel
+        , [ ( AudioSources.Effects.victory, model.now ) ]
+        )
 
     else
-        newPlayingModel
+        ( newPlayingModel
+        , if flipped then
+            [ ( AudioSources.Effects.flipped, model.now ) ]
+
+          else
+            []
+        )
 
 
 toLevel : Int -> Model -> PlayingModel -> PlayingModel
@@ -275,7 +301,7 @@ toLevel level model playingModel =
         |> regen model
 
 
-updatePosition : FrameStuff -> PlayingModel -> PlayingModel
+updatePosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
 updatePosition frameStuff model =
     let
         hero : Hero
@@ -283,10 +309,12 @@ updatePosition frameStuff model =
             model.hero
     in
     if hero.waitTime > 0 then
-        { model
+        ( { model
             | hero =
                 { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
-        }
+          }
+        , []
+        )
 
     else
         let
@@ -365,10 +393,12 @@ updatePosition frameStuff model =
                         , newPos
                         )
         in
-        { model
+        ( { model
             | hero = newHero
             , heroPosition = newPosition
-        }
+          }
+        , []
+        )
 
 
 isPressed : Digital -> FrameStuff -> PlayingModel -> Bool
