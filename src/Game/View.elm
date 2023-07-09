@@ -5,7 +5,8 @@ import Dict
 import Dungeon.Tiles.Wall
 import Fonts
 import Game.Types exposing (InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
-import Html exposing (Html)
+import Html exposing (Attribute, Html)
+import Html.Attributes
 import Html.Events
 import LittleMummy.Idle
 import LittleMummy.Walk
@@ -23,27 +24,44 @@ tileSize =
     16
 
 
+button : List (Attribute msg) -> List (Html msg) -> Html msg
+button attrs children =
+    Html.div
+        (Html.Attributes.style "border" "1px solid white"
+            :: Html.Attributes.style "padding" "10px"
+            :: Html.Attributes.style "cursor" "pointer"
+            :: attrs
+        )
+        children
+
+
 view : Model -> Html Msg
 view model =
     case model.inner of
         Menu _ ->
             Html.div []
-                [ Html.button
+                [ button
                     [ Html.Events.onClick Start
                     , Html.Events.onMouseEnter MenuHover
                     ]
                     [ Html.text "START PLAYING" ]
-                , Html.button
+                , Html.br [] []
+                , Html.br [] []
+                , button
                     [ Html.Events.onClick Start
                     , Html.Events.onMouseEnter MenuHover
                     ]
                     [ Html.text "START PLAYING" ]
-                , Html.button
+                , Html.br [] []
+                , Html.br [] []
+                , button
                     [ Html.Events.onClick Start
                     , Html.Events.onMouseEnter MenuHover
                     ]
                     [ Html.text "START PLAYING" ]
-                , Html.button
+                , Html.br [] []
+                , Html.br [] []
+                , button
                     [ Html.Events.onClick Start
                     , Html.Events.onMouseEnter MenuHover
                     ]
@@ -91,10 +109,10 @@ viewRoll ( position, roll ) =
     ( toFloatPosition position
     , Image.fromSrc <|
         if roll.reversed then
-            Sprites.rollOver
+            Sprites.rollUnder
 
         else
-            Sprites.rollUnder
+            Sprites.rollOver
     )
 
 

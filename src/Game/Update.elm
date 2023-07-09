@@ -926,13 +926,19 @@ loadAudio key =
     Audio.loadAudio (Loaded key) <| "/audio/" ++ key
 
 
-fadeForVictory : Model -> Time.Posix -> Float
-fadeForVictory model at =
-    let
-        dt =
-            Time.posixToMillis model.now - Time.posixToMillis at
-    in
-    min 1 (0.25 + toFloat dt * 0.75 / 4.8065)
+fadeForVictory : Model -> Maybe Time.Posix -> Float
+fadeForVictory model lastWonAt =
+    case lastWonAt of
+        Just at ->
+            let
+                dt : Int
+                dt =
+                    Time.posixToMillis model.now - Time.posixToMillis at
+            in
+            min 1 (0.25 + toFloat dt * 0.75 / 4.8065)
+
+        Nothing ->
+            1
 
 
 baseVolume : Model -> InnerModel -> Float
@@ -946,12 +952,7 @@ baseVolume model gameState =
                 0
 
             else
-                case lastWonAt of
-                    Just at ->
-                        fadeForVictory model at
-
-                    Nothing ->
-                        1
+                fadeForVictory model lastWonAt
 
         Lost _ ->
             0
@@ -968,12 +969,8 @@ sneakyVolume model gameState =
                 1
 
             else
-                case lastWonAt of
-                    Just at ->
-                        fadeForVictory model at
-
-                    Nothing ->
-                        clamp 0 1 (panicLevel * -3 + 1)
+                fadeForVictory model lastWonAt
+                    * clamp 0 1 (panicLevel * -3 + 1)
 
         Lost _ ->
             0

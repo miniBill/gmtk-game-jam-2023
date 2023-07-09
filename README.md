@@ -2,7 +2,7 @@
 
 - pause menu
 - credits
-- won state?
+- gamepad
 
 # Credits
 
