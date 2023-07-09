@@ -129,7 +129,7 @@ update msg model =
         ( KeyUp _, _ ) ->
             model
 
-        ( Loaded _ (Err e), _ ) ->
+        ( Loaded _ (Err _), _ ) ->
             -- let
             --     _ =
             --         Debug.log "Error loading music" e
@@ -170,7 +170,7 @@ deltaT model old =
 
 increasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
 increasePanic model playingModel =
-    if deltaT model playingModel.lastPanicIncreaseAt < 1000 then
+    if deltaT model playingModel.lastPanicIncreaseAt < 2 * 1000 / actionsPerSecond then
         ( playingModel, [] )
 
     else
@@ -182,14 +182,27 @@ increasePanic model playingModel =
             isSpotted : Bool
             isSpotted =
                 List.any guardHasSpotted playingModel.guards
+
+            playSpotted =
+                deltaT model playingModel.lastSpottedSoundAt > 1000
         in
         if isSpotted then
             ( { playingModel
                 | panicLevel = clamp 0 1 <| 0.5 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
                 , lastPanicDecreaseAt = model.now -- prevent immediate decrease
+                , lastSpottedSoundAt =
+                    if playSpotted then
+                        model.now
+
+                    else
+                        playingModel.lastSpottedSoundAt
               }
-            , [ ( AudioSources.Effects.spotted, model.now ) ]
+            , if playSpotted then
+                []
+
+              else
+                [ ( AudioSources.Effects.spotted, model.now ) ]
             )
 
         else
@@ -380,7 +393,7 @@ updateGuard frameStuff model guard =
 startChasing : PlayingModel -> Guard -> Guard
 startChasing model guard =
     { guard
-        | waitTime = 1000 + 1000 / toFloat (model.level - 2) -- Let the hero try and escape
+        | waitTime = (1000 / actionsPerSecond + 500) / toFloat (model.level - 2) -- Let the hero try and escape
         , behavior = SillyChasingHero
     }
 
@@ -923,6 +936,7 @@ initPlaying flags =
     , rolls = createRolls flags.now rooms
     , level = 1
     , panicLevel = 0
+    , lastSpottedSoundAt = flags.now
     , lastPanicIncreaseAt = flags.now
     , lastPanicDecreaseAt = flags.now
     , lastWonAt = Nothing
