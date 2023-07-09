@@ -213,7 +213,7 @@ increasePanic model playingModel =
 
 decreasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
 decreasePanic model playingModel =
-    if deltaT model playingModel.lastPanicDecreaseAt < 300 * toFloat playingModel.level then
+    if deltaT model playingModel.lastPanicDecreaseAt < 100 * toFloat playingModel.level then
         ( playingModel, [] )
 
     else
