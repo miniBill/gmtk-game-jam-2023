@@ -1,8 +1,6 @@
 # TODO
 
 - better enemies
-  - increase panic with line of sight
-  - decrease it with hidden
   - maybechase
   - mayberandom
   - start random
