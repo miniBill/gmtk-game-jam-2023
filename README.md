@@ -5,19 +5,19 @@
   - mayberandom
   - start random
 - movement - redo
-- credits
 - gamepad
 
 # Credits
 
 - Name - Hannah
 - Gameplay - Liv
-- Based on a true story - [redacted]
 - Main character is a mummy wrapped in toilet paper - Liv
-- Art - Emily
+- Based on a true story - [redacted]
+- Art - Emily - https://www.instagram.com/emilyw.design/
 - Music - GabrielExists - https://gabriel-exists.bandcamp.com/
 - Background - https://unsplash.com/photos/qVotvbsuM_c
 - Guards - https://opengameart.org/content/2d-soldier-for-boneskeleton-animation
+- Font - https://opengameart.org/content/new-original-grafx2-font-collection
 
 # Ideas
 

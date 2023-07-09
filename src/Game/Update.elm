@@ -304,7 +304,7 @@ updateGuard frameStuff model guard =
                             else
                                 { guard
                                     | direction = newDirection
-                                    , waitTime = waitTime / 2
+                                    , waitTime = waitTime / 4
                                 }
                     in
                     if Set.member movedGuard.position model.walls then
