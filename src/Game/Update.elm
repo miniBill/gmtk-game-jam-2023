@@ -320,105 +320,106 @@ toLevel level model playingModel =
 
 updatePosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
 updatePosition frameStuff model =
-    let
-        hero : Hero
-        hero =
-            model.hero
-    in
     if model.paused then
         ( model, [] )
 
-    else if hero.waitTime > 0 then
-        ( { model
-            | hero =
-                { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
-          }
-        , []
-        )
-
     else
         let
-            onPress : Digital -> number
-            onPress key =
-                if isPressed key frameStuff model then
-                    1
+            hero : Hero
+            hero =
+                model.hero
+        in
+        if hero.waitTime > 0 then
+            ( { model
+                | hero =
+                    { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
+              }
+            , []
+            )
 
-                else
-                    0
+        else
+            let
+                onPress : Digital -> number
+                onPress key =
+                    if isPressed key frameStuff model then
+                        1
 
-            positionX : Int
-            positionX =
-                Tuple.first model.heroPosition
+                    else
+                        0
 
-            positionY : Int
-            positionY =
-                Tuple.second model.heroPosition
+                positionX : Int
+                positionX =
+                    Tuple.first model.heroPosition
 
-            dx : number
-            dx =
-                onPress Gamepad.DpadRight - onPress Gamepad.DpadLeft
+                positionY : Int
+                positionY =
+                    Tuple.second model.heroPosition
 
-            newX : Int
-            newX =
-                (positionX + dx)
-                    |> clamp 0 (model.gameWidth - 1)
+                dx : number
+                dx =
+                    onPress Gamepad.DpadRight - onPress Gamepad.DpadLeft
 
-            dy : number
-            dy =
-                onPress Gamepad.DpadDown - onPress Gamepad.DpadUp
+                newX : Int
+                newX =
+                    (positionX + dx)
+                        |> clamp 0 (model.gameWidth - 1)
 
-            newY : Int
-            newY =
-                (positionY + dy)
-                    |> clamp 0 (model.gameHeight - 1)
+                dy : number
+                dy =
+                    onPress Gamepad.DpadDown - onPress Gamepad.DpadUp
 
-            ( newHero, newPosition ) =
-                if newX == positionX && newY == positionY then
-                    ( { hero | moving = False }, model.heroPosition )
+                newY : Int
+                newY =
+                    (positionY + dy)
+                        |> clamp 0 (model.gameHeight - 1)
 
-                else
-                    let
-                        free : Int -> Int -> Bool
-                        free posX posY =
-                            not (Set.member ( posX, posY ) model.walls)
-
-                        newPos : Position
-                        newPos =
-                            if free newX newY then
-                                ( newX, newY )
-
-                            else if free newX positionY then
-                                ( newX, positionY )
-
-                            else if free positionX newY then
-                                ( positionX, newY )
-
-                            else
-                                model.heroPosition
-                    in
-                    if model.heroPosition == newPos then
-                        ( hero, model.heroPosition )
+                ( newHero, newPosition ) =
+                    if newX == positionX && newY == positionY then
+                        ( { hero | moving = False }, model.heroPosition )
 
                     else
                         let
-                            newPositionX : Int
-                            newPositionX =
-                                Tuple.first newPos
+                            free : Int -> Int -> Bool
+                            free posX posY =
+                                not (Set.member ( posX, posY ) model.walls)
+
+                            newPos : Position
+                            newPos =
+                                if free newX newY then
+                                    ( newX, newY )
+
+                                else if free newX positionY then
+                                    ( newX, positionY )
+
+                                else if free positionX newY then
+                                    ( positionX, newY )
+
+                                else
+                                    model.heroPosition
                         in
-                        ( { hero
-                            | facingRight = newPositionX - positionX > 0
-                            , waitTime = 1000 / actionsPerSecond
-                            , moving = True
-                          }
-                        , newPos
-                        )
-        in
-        ( { model
-            | hero = newHero
-            , heroPosition = newPosition
-          }
-        , []
-        )
+                        if model.heroPosition == newPos then
+                            ( hero, model.heroPosition )
+
+                        else
+                            let
+                                newPositionX : Int
+                                newPositionX =
+                                    Tuple.first newPos
+                            in
+                            ( { hero
+                                | facingRight = newPositionX - positionX > 0
+                                , waitTime = 1000 / actionsPerSecond
+                                , moving = True
+                              }
+                            , newPos
+                            )
+            in
+            ( { model
+                | hero = newHero
+                , heroPosition = newPosition
+              }
+            , []
+            )
 
 
 isPressed : Digital -> FrameStuff -> PlayingModel -> Bool

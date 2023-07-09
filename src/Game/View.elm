@@ -148,8 +148,8 @@ viewWall position =
 
 
 viewTopBar : PlayingModel -> PixelEngine.Area msg
-viewTopBar model =
-    topBar model
+viewTopBar playingModel =
+    topBar playingModel
         |> Tile.fromText ( 0, 0 )
         |> List.indexedMap
             (\column tile ->
@@ -162,7 +162,7 @@ viewTopBar model =
         |> PixelEngine.tiledArea
             { rows = 2
             , tileset = textTileset
-            , background = PixelEngine.colorBackground Color.black
+            , background = PixelEngine.colorBackground <| Color.rgba 0 0 0 0
             }
 
 
@@ -202,7 +202,7 @@ viewStatusMessage model =
         |> PixelEngine.tiledArea
             { rows = statusMessageHeight + 1
             , tileset = textTileset
-            , background = PixelEngine.colorBackground Color.black
+            , background = PixelEngine.colorBackground <| Color.rgba 0 0 0 0
             }
 
 

@@ -7,7 +7,17 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Rolls reversed</title>
   </head>
-  <body style="background: url(/img/background.avif)">
+  <body>
+    <style>
+      body {
+        background: url("/img/background.avif");
+      }
+
+      ._c4fdcf88 {
+        /* Hack to avoid the default black background on the main game area */
+        background-color: transparent !important;
+      }
+    </style>
     <main></main>
     <script src="/elm.js"></script>
     <!-- <script src="/gamepadPort.js"></script> -->
