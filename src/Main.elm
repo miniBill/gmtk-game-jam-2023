@@ -53,6 +53,7 @@ type alias Flags =
 -- main : Gamepad.Simple.Program Flags Model Msg
 
 
+main : Program Flags (Audio.Model Msg Model) (Audio.Msg Msg)
 main =
     Audio.elementWithAudio
         --  Gamepad.Simple.element
