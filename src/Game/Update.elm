@@ -8,7 +8,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Duration
 import EverySet
-import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move)
+import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond, move, moveDown, moveUp)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
@@ -145,10 +145,39 @@ updateGuard frameStuff model guard =
         case guard.behavior of
             RoamingRoom room ->
                 let
-                    (( wantedX, wantedY ) as wantedPosition) =
+                    ( minX, minY ) =
+                        room.topLeft
+
+                    ( maxX, maxY ) =
+                        room.bottomRight
+
+                    ( wantedX, wantedY ) =
                         move guard.direction guard.position
+
+                    newDirection : Direction
+                    newDirection =
+                        if wantedX <= minX || wantedX >= maxX then
+                            if wantedY <= minY + 1 then
+                                Down
+
+                            else
+                                Up
+
+                        else if wantedY <= minY || wantedY >= maxY then
+                            if wantedX <= minX + 1 then
+                                Right
+
+                            else
+                                Left
+
+                        else
+                            guard.direction
                 in
-                guard
+                { guard
+                    | position = move newDirection guard.position
+                    , direction = newDirection
+                    , waitTime = (1000 + 3000 / toFloat model.level) / actionsPerSecond
+                }
 
             SillyChasingHero ->
                 let
@@ -242,6 +271,7 @@ createGuards now rooms level =
                 clamp 3 (List.length rooms) level
     in
     rooms
+        |> List.filter (\room -> room.topLeft /= ( 0, 0 ))
         |> Random.List.choices guardsCount
         |> Random.map (\( picked, _ ) -> List.map createGuardInRoom picked)
         |> randomGenerate now

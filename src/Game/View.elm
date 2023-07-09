@@ -80,7 +80,12 @@ view model =
                     [ viewTopBar innerModel
                     , PixelEngine.imageArea
                         { height = toFloat innerModel.gameHeight * tileSize
-                        , background = PixelEngine.colorBackground Color.blue
+                        , background =
+                            PixelEngine.imageBackground
+                                { source = "/img/Dungeon/tiles/floor/floor_5.png"
+                                , width = 16
+                                , height = 16
+                                }
                         }
                         (viewRolls innerModel
                             ++ viewGuards innerModel
