@@ -183,18 +183,12 @@ increasePanic model playingModel =
             let
                 playSpotted : Bool
                 playSpotted =
-                    deltaT model playingModel.lastSpottedSoundAt > 2000
+                    playingModel.panicLevel == 0
             in
             ( { playingModel
                 | panicLevel = clamp 0 1 <| 0.1 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
                 , lastPanicDecreaseAt = model.now -- prevent immediate decrease
-                , lastSpottedSoundAt =
-                    if playSpotted then
-                        model.now
-
-                    else
-                        playingModel.lastSpottedSoundAt
               }
             , if playSpotted then
                 [ ( AudioSources.Effects.spotted, model.now ) ]
@@ -1020,7 +1014,6 @@ initPlaying flags =
     , rolls = createRolls flags.now rooms
     , level = 1
     , panicLevel = 0
-    , lastSpottedSoundAt = flags.now
     , lastPanicIncreaseAt = flags.now
     , lastPanicDecreaseAt = flags.now
     , lastWonAt = Nothing

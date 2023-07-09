@@ -70,7 +70,6 @@ type alias PlayingModel =
     , rooms : List Room
     , level : Int
     , panicLevel : Float
-    , lastSpottedSoundAt : Time.Posix
     , lastPanicIncreaseAt : Time.Posix
     , lastPanicDecreaseAt : Time.Posix
     , lastWonAt : Maybe Time.Posix
