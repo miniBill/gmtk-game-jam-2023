@@ -186,7 +186,12 @@ increasePanic model playingModel =
                     playingModel.panicLevel == 0
             in
             ( { playingModel
-                | panicLevel = clamp 0 1 <| 0.05 + playingModel.panicLevel
+                | panicLevel =
+                    if playingModel.panicLevel == 0 then
+                        0.5
+
+                    else
+                        clamp 0 1 <| 0.05 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
                 , lastPanicDecreaseAt = model.now -- prevent immediate decrease
               }
