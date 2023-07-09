@@ -134,9 +134,9 @@ view model =
                         { height = toFloat innerModel.gameHeight * tileSize
                         , background =
                             PixelEngine.imageBackground
-                                { source = Sprites.floor.path
-                                , width = toFloat Sprites.floor.width
-                                , height = toFloat Sprites.floor.height
+                                { source = Sprites.floor
+                                , width = 9.24
+                                , height = 16
                                 }
                         }
                         (viewRolls innerModel
