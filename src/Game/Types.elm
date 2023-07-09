@@ -56,7 +56,8 @@ type Msg
 
 
 type alias PlayingModel =
-    { hero : Hero
+    { startedAt : Time.Posix
+    , hero : Hero
     , heroPosition : Position
     , keyboardPressed : EverySet Digital
     , previous :

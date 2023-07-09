@@ -1024,6 +1024,7 @@ initPlaying flags =
     , lastWonAt = Nothing
     , paused = False
     , guards = []
+    , startedAt = flags.now
     }
 
 
@@ -1412,51 +1413,67 @@ sneakyVolume model gameState =
         Menu ->
             0
 
-        Playing { paused, lastWonAt, panicLevel } ->
+        Playing ({ paused, lastWonAt, panicLevel } as playingModel) ->
             if paused then
                 1
 
             else
                 fadeForVictory model lastWonAt
                     * clamp 0 1 (panicLevel * -3 + 1)
+                    * fadeInGame model playingModel
 
         Lost _ ->
             0
 
 
 chaseVolume : Model -> InnerModel -> Float
-chaseVolume _ gameState =
+chaseVolume model gameState =
     case gameState of
-        Playing { paused, panicLevel } ->
+        Playing ({ paused, panicLevel } as playingModel) ->
             if paused then
                 0
 
             else
                 clamp 0 1 (panicLevel * 3 - 0.5)
+                    * fadeInGame model playingModel
 
         _ ->
             0
 
 
 panicVolume : Model -> InnerModel -> Float
-panicVolume _ gameState =
+panicVolume model gameState =
     case gameState of
-        Playing { paused, panicLevel } ->
+        Playing ({ paused, panicLevel } as playingModel) ->
             if paused then
                 0
 
             else
                 clamp 0 1 (panicLevel * 2.5 - 1.25)
+                    * fadeInGame model playingModel
 
         _ ->
             0
 
 
 menuVolume : Model -> InnerModel -> Float
-menuVolume _ gameState =
+menuVolume model gameState =
     case gameState of
         Menu ->
             1
 
+        Playing playingModel ->
+            fadeOutMenu model playingModel
+
         _ ->
             0
+
+
+fadeInGame : Model -> PlayingModel -> Float
+fadeInGame model playingModel =
+    clamp 0 1 (deltaT model playingModel.startedAt / 500)
+
+
+fadeOutMenu : Model -> PlayingModel -> Float
+fadeOutMenu model playingModel =
+    1 - fadeInGame model playingModel

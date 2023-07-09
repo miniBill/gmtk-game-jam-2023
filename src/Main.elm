@@ -175,6 +175,8 @@ view model =
     case model of
         WaitingWebAudioInit ->
             [ Html.div [] [ Html.text "Click anywhere to start" ]
+            , Html.div [] [ Html.text " " ]
+            , Html.div [] [ Html.text "Playing in fullscreen is highly recommended!" ]
             ]
                 |> Game.View.center [ Html.Events.onClick InitWebAudio ]
 
