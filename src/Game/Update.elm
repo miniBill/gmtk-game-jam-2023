@@ -220,6 +220,11 @@ updateGuard frameStuff model guard =
         { guard | waitTime = max 0 <| guard.waitTime - frameStuff.dt }
 
     else
+        let
+            waitTime : Float
+            waitTime =
+                (1000 + 3000 / toFloat model.level) / actionsPerSecond
+        in
         case guard.behavior of
             RoamingRoom room ->
                 let
@@ -251,14 +256,70 @@ updateGuard frameStuff model guard =
                         else
                             guard.direction
 
-                    waitTime : Float
-                    waitTime =
-                        (1000 + 3000 / toFloat model.level) / actionsPerSecond
+                    movedGuard : Guard
+                    movedGuard =
+                        if newDirection == guard.direction then
+                            { guard
+                                | position =
+                                    move guard.direction guard.position
+                                , waitTime = waitTime
+                            }
+
+                        else
+                            { guard
+                                | direction = newDirection
+                                , waitTime = waitTime / 2
+                            }
+
+                    lightPosition : Position
+                    lightPosition =
+                        move movedGuard.direction movedGuard.position
                 in
-                if newDirection == guard.direction then
+                if lightPosition == model.heroPosition then
+                    { movedGuard | behavior = SillyChasingHero }
+
+                else
+                    movedGuard
+
+            SillyChasingHero ->
+                let
+                    ( heroX, heroY ) =
+                        model.heroPosition
+
+                    ( guardX, guardY ) =
+                        guard.position
+
+                    isFree : Direction -> Bool
+                    isFree direction =
+                        not (Set.member (move direction guard.position) model.walls)
+
+                    newDirection : Direction
+                    newDirection =
+                        if heroX > guardX && isFree Right then
+                            Right
+
+                        else if heroX < guardX && isFree Left then
+                            Left
+
+                        else if heroY > guardY && isFree Down then
+                            Down
+
+                        else if heroY < guardY && isFree Up then
+                            Up
+
+                        else
+                            guard.direction
+
+                    newPosition : Position
+                    newPosition =
+                        move newDirection guard.position
+                in
+                if Set.member newPosition model.walls then
+                    { guard | direction = newDirection }
+
+                else if newDirection == guard.direction then
                     { guard
-                        | position =
-                            move guard.direction guard.position
+                        | position = newPosition
                         , waitTime = waitTime
                     }
 
@@ -267,13 +328,6 @@ updateGuard frameStuff model guard =
                         | direction = newDirection
                         , waitTime = waitTime / 2
                     }
-
-            SillyChasingHero ->
-                let
-                    _ =
-                        Debug.todo
-                in
-                guard
 
 
 queueEffect : String -> Model -> Model
@@ -592,10 +646,6 @@ updateHeroPosition frameStuff model =
                                 dx =
                                     newX - positionX
 
-                                dy : Int
-                                dy =
-                                    newY - positionY
-
                                 newDirection : Direction
                                 newDirection =
                                     if dx > 0 then
@@ -604,14 +654,20 @@ updateHeroPosition frameStuff model =
                                     else if dx < 0 then
                                         Left
 
-                                    else if dy > 0 then
-                                        Up
-
-                                    else if dy < 0 then
-                                        Down
-
                                     else
-                                        hero.direction
+                                        let
+                                            dy : Int
+                                            dy =
+                                                newY - positionY
+                                        in
+                                        if dy > 0 then
+                                            Up
+
+                                        else if dy < 0 then
+                                            Down
+
+                                        else
+                                            hero.direction
                             in
                             ( { hero
                                 | direction = newDirection
