@@ -130,10 +130,10 @@ update msg model =
             model
 
         ( Loaded _ (Err e), _ ) ->
-            let
-                _ =
-                    Debug.log "Error loading music" e
-            in
+            -- let
+            --     _ =
+            --         Debug.log "Error loading music" e
+            -- in
             model
 
         ( Loaded key (Ok source), _ ) ->
@@ -429,16 +429,17 @@ moveToPrevious model =
     )
 
 
+debugging : Bool
+debugging =
+    False
+
+
 maybeReset : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
 maybeReset frameStuff model playingModel =
     if wasClicked Gamepad.Start frameStuff playingModel then
         ( { playingModel | paused = not playingModel.paused }, [] )
 
-    else
-        let
-            _ =
-                Debug.todo
-        in
+    else if debugging then
         if wasReleased Gamepad.Back frameStuff playingModel then
             ( toLevel 1 model playingModel
             , [ ( AudioSources.Effects.lose, model.now ) ]
@@ -457,6 +458,9 @@ maybeReset frameStuff model playingModel =
 
         else
             ( playingModel, [] )
+
+    else
+        ( playingModel, [] )
 
 
 regen : Time.Posix -> PlayingModel -> PlayingModel
