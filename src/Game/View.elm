@@ -4,12 +4,10 @@ import Color
 import Dict
 import Dungeon.Tiles.Wall
 import Fonts
-import Game.Types exposing (InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Direction(..), Guard, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
 import Html exposing (Attribute, Html)
 import Html.Attributes
 import Html.Events
-import LittleMummy.Idle
-import LittleMummy.Walk
 import PixelEngine
 import PixelEngine.Image as Image exposing (Image)
 import PixelEngine.Options as Options
@@ -85,6 +83,7 @@ view model =
                         , background = PixelEngine.colorBackground Color.blue
                         }
                         (viewRolls innerModel
+                            ++ viewGuards innerModel
                             ++ viewWalls innerModel
                             ++ [ viewHero innerModel ]
                         )
@@ -112,14 +111,76 @@ view model =
                     ++ " before dying a horrible, horrible death"
 
 
-viewRolls : PlayingModel -> List ( ( Float, Float ), Image msg )
+type alias Sprite msg =
+    ( ( Float, Float ), Image msg )
+
+
+viewGuards : PlayingModel -> List (Sprite msg)
+viewGuards model =
+    List.concatMap viewGuard model.guards
+
+
+viewGuard : Guard -> List (Sprite msg)
+viewGuard guard =
+    [ ( toFloatPosition guard.position
+      , Image.fromTile
+            (Tile.fromPosition ( 0, 0 ))
+        <|
+            case guard.direction of
+                _ ->
+                    Sprites.guard
+      )
+    , case guard.direction of
+        Right ->
+            ( toFloatPosition (guard.position |> moveRight)
+            , Image.fromSrc Sprites.lightRight
+            )
+
+        Up ->
+            ( toFloatPosition (guard.position |> moveUp)
+            , Image.fromSrc Sprites.lightUp
+            )
+
+        Left ->
+            ( toFloatPosition (guard.position |> moveLeft)
+            , Image.fromSrc Sprites.lightLeft
+            )
+
+        Down ->
+            ( toFloatPosition (guard.position |> moveDown)
+            , Image.fromSrc Sprites.lightDown
+            )
+    ]
+
+
+moveRight : Position -> Position
+moveRight ( x, y ) =
+    ( x + 1, y )
+
+
+moveLeft : Position -> Position
+moveLeft ( x, y ) =
+    ( x - 1, y )
+
+
+moveDown : Position -> Position
+moveDown ( x, y ) =
+    ( x, y + 1 )
+
+
+moveUp : Position -> Position
+moveUp ( x, y ) =
+    ( x, y - 1 )
+
+
+viewRolls : PlayingModel -> List (Sprite msg)
 viewRolls model =
     model.rolls
         |> Dict.toList
         |> List.map viewRoll
 
 
-viewRoll : ( Position, Roll ) -> ( ( Float, Float ), Image msg )
+viewRoll : ( Position, Roll ) -> Sprite msg
 viewRoll ( position, roll ) =
     ( toFloatPosition position
     , Image.fromSrc <|
@@ -131,14 +192,14 @@ viewRoll ( position, roll ) =
     )
 
 
-viewWalls : PlayingModel -> List ( ( Float, Float ), Image msg )
+viewWalls : PlayingModel -> List (Sprite msg)
 viewWalls model =
     model.walls
         |> Set.toList
         |> List.map viewWall
 
 
-viewWall : Position -> ( ( Float, Float ), Image msg )
+viewWall : Position -> Sprite msg
 viewWall position =
     ( toFloatPosition position
     , Image.fromTile
@@ -265,34 +326,16 @@ textTileset =
     Fonts.berlin8x8white.tileset
 
 
-viewHero : PlayingModel -> ( ( Float, Float ), Image msg )
+viewHero : PlayingModel -> Sprite msg
 viewHero model =
-    let
-        spritesheet : { tileset : Tileset, widthInTiles : Int }
-        spritesheet =
-            if model.hero.moving then
-                if model.hero.facingRight then
-                    LittleMummy.Walk.spritesheetFlipped
+    ( toFloatPosition model.heroPosition
+    , case model.hero.direction of
+        Right ->
+            Image.fromSrc Sprites.mummyThicklines
 
-                else
-                    LittleMummy.Walk.spritesheet
-
-            else if model.hero.facingRight then
-                LittleMummy.Idle.spritesheetFlipped
-
-            else
-                LittleMummy.Idle.spritesheet
-    in
-    viewAnimated
-        { spritesheet = spritesheet
-        , position = model.heroPosition
-        , key = "hero"
-        }
-        |> (\_ ->
-                ( toFloatPosition model.heroPosition
-                , Image.fromSrc Sprites.mummyThicklines
-                )
-           )
+        _ ->
+            Image.fromSrc Sprites.mummyThicklinesFlipped
+    )
 
 
 statusMessageHeight : number
@@ -305,7 +348,7 @@ viewAnimated :
     , spritesheet : { widthInTiles : Int, tileset : Tile.Tileset }
     , key : String
     }
-    -> ( ( Float, Float ), Image msg )
+    -> Sprite msg
 viewAnimated { position, spritesheet, key } =
     ( toFloatPosition position
     , Image.fromTile

@@ -8,13 +8,14 @@ import Browser.Events
 import Dict exposing (Dict)
 import Duration
 import EverySet
-import Game.Types exposing (Effect, Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond)
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
 import Quantity
 import Random exposing (Generator)
 import Random.Extra
+import Random.List
 import Set exposing (Set)
 import Time
 
@@ -27,12 +28,6 @@ maxArea =
 minSideLength : Int
 minSideLength =
     2
-
-
-type alias Room =
-    { topLeft : Position
-    , bottomRight : Position
-    }
 
 
 update : Msg -> Model -> Model
@@ -74,7 +69,8 @@ update msg model =
 
                 ( newInnerModel, newEffects ) =
                     ( innerModel, [] )
-                        |> updatePipe (updatePosition fixed)
+                        |> updatePipe (updateHeroPosition fixed)
+                        |> updatePipe (updateGuardsPosition fixed)
                         |> updatePipe (updateReversing fixed model)
                         |> updatePipe (maybeReset fixed model)
                         |> updatePipe moveToPrevious
@@ -123,6 +119,37 @@ update msg model =
 
         ( Loaded key (Ok source), _ ) ->
             { model | sources = Dict.insert key source model.sources }
+
+
+updateGuardsPosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
+updateGuardsPosition frameStuff model =
+    if model.paused then
+        ( model, [] )
+
+    else
+        let
+            newModel =
+                { model | guards = List.map (updateGuard frameStuff model) model.guards }
+        in
+        ( newModel, [] )
+
+
+updateGuard : FrameStuff -> PlayingModel -> Guard -> Guard
+updateGuard frameStuff model guard =
+    case guard.behavior of
+        RoamingRoom room ->
+            let
+                _ =
+                    Debug.todo
+            in
+            guard
+
+        SillyChasingHero ->
+            let
+                _ =
+                    Debug.todo
+            in
+            guard
 
 
 queueEffect : String -> Model -> Model
@@ -193,6 +220,40 @@ regen now playingModel =
         | walls = walls
         , rolls = createRolls now rooms
         , heroPosition = ( 1, 1 )
+        , guards = createGuards now rooms playingModel.level
+    }
+
+
+createGuards : Time.Posix -> List Room -> Int -> List Guard
+createGuards now rooms level =
+    let
+        guardsCount =
+            if level < 3 then
+                0
+
+            else
+                clamp 3 (List.length rooms) level
+    in
+    rooms
+        |> Random.List.choices guardsCount
+        |> Random.map (\( picked, _ ) -> List.map createGuardInRoom picked)
+        |> randomGenerate now
+
+
+createGuardInRoom : Room -> Guard
+createGuardInRoom room =
+    let
+        ( x, y ) =
+            room.topLeft
+    in
+    { position = ( x + 1, y + 1 )
+    , direction =
+        if modBy 2 (x + y) == 0 then
+            Down
+
+        else
+            Right
+    , behavior = RoamingRoom room
     }
 
 
@@ -318,8 +379,8 @@ toLevel level model playingModel =
         |> regen model.now
 
 
-updatePosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
-updatePosition frameStuff model =
+updateHeroPosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
+updateHeroPosition frameStuff model =
     if model.paused then
         ( model, [] )
 
@@ -355,26 +416,26 @@ updatePosition frameStuff model =
                 positionY =
                     Tuple.second model.heroPosition
 
-                dx : number
-                dx =
+                wantedDx : number
+                wantedDx =
                     onPress Gamepad.DpadRight - onPress Gamepad.DpadLeft
 
-                newX : Int
-                newX =
-                    (positionX + dx)
+                wantedNewX : Int
+                wantedNewX =
+                    (positionX + wantedDx)
                         |> clamp 0 (model.gameWidth - 1)
 
-                dy : number
-                dy =
+                wantedDy : number
+                wantedDy =
                     onPress Gamepad.DpadDown - onPress Gamepad.DpadUp
 
-                newY : Int
-                newY =
-                    (positionY + dy)
+                wantedNewY : Int
+                wantedNewY =
+                    (positionY + wantedDy)
                         |> clamp 0 (model.gameHeight - 1)
 
                 ( newHero, newPosition ) =
-                    if newX == positionX && newY == positionY then
+                    if wantedNewX == positionX && wantedNewY == positionY then
                         ( { hero | moving = False }, model.heroPosition )
 
                     else
@@ -385,14 +446,14 @@ updatePosition frameStuff model =
 
                             newPos : Position
                             newPos =
-                                if free newX newY then
-                                    ( newX, newY )
+                                if free wantedNewX wantedNewY then
+                                    ( wantedNewX, wantedNewY )
 
-                                else if free newX positionY then
-                                    ( newX, positionY )
+                                else if free wantedNewX positionY then
+                                    ( wantedNewX, positionY )
 
-                                else if free positionX newY then
-                                    ( positionX, newY )
+                                else if free positionX wantedNewY then
+                                    ( positionX, wantedNewY )
 
                                 else
                                     model.heroPosition
@@ -402,12 +463,36 @@ updatePosition frameStuff model =
 
                         else
                             let
-                                newPositionX : Int
-                                newPositionX =
-                                    Tuple.first newPos
+                                ( newX, newY ) =
+                                    newPos
+
+                                dx : Int
+                                dx =
+                                    newX - positionX
+
+                                dy : Int
+                                dy =
+                                    newY - positionY
+
+                                newDirection : Direction
+                                newDirection =
+                                    if dx > 0 then
+                                        Right
+
+                                    else if dx < 0 then
+                                        Left
+
+                                    else if dy > 0 then
+                                        Up
+
+                                    else if dy < 0 then
+                                        Down
+
+                                    else
+                                        hero.direction
                             in
                             ( { hero
-                                | facingRight = newPositionX - positionX > 0
+                                | direction = newDirection
                                 , waitTime = 1000 / actionsPerSecond
                                 , moving = True
                               }
@@ -542,7 +627,7 @@ initPlaying flags =
         hero : Hero
         hero =
             { waitTime = 0
-            , facingRight = True
+            , direction = Right
             , moving = False
             , attacking = False
             }
@@ -577,6 +662,7 @@ initPlaying flags =
     , panicLevel = 0
     , lastWonAt = Nothing
     , paused = False
+    , guards = []
     }
 
 
@@ -596,16 +682,17 @@ createRolls now rooms =
                 (\x y -> ( ( x, y ), { reversed = False } ))
                 (Random.int (minX + 1) (maxX - 1))
                 (Random.int (minY + 1) (maxY - 1))
-
-        generator : Generator (Dict Position Roll)
-        generator =
-            rooms
-                |> List.filter (\room -> room.topLeft /= ( 0, 0 ))
-                |> List.map randomRoll
-                |> Random.Extra.sequence
-                |> Random.map
-                    Dict.fromList
     in
+    rooms
+        |> List.filter (\room -> room.topLeft /= ( 0, 0 ))
+        |> List.map randomRoll
+        |> Random.Extra.sequence
+        |> Random.map Dict.fromList
+        |> randomGenerate now
+
+
+randomGenerate : Time.Posix -> Generator a -> a
+randomGenerate now generator =
     Random.step generator
         (Random.initialSeed <| Time.posixToMillis now)
         |> Tuple.first
@@ -654,12 +741,9 @@ generateWalls now gameWidth gameHeight =
                 |> Set.union rightWall
 
         ( internalWalls, rooms ) =
-            Random.step
-                (wallGenerator topLeft bottomRight
-                    |> Random.andThen (openDoors bottomRight)
-                )
-                (Random.initialSeed <| Time.posixToMillis now)
-                |> Tuple.first
+            wallGenerator topLeft bottomRight
+                |> Random.andThen (openDoors bottomRight)
+                |> randomGenerate now
     in
     ( Set.union outerWalls internalWalls, rooms )
 

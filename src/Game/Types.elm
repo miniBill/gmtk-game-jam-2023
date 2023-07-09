@@ -1,4 +1,4 @@
-module Game.Types exposing (Effect, Flags, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, actionsPerSecond)
+module Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, Hero, InnerModel(..), Model, Msg(..), PlayingModel, Position, Roll, Room, actionsPerSecond)
 
 import Audio exposing (Source)
 import Dict exposing (Dict)
@@ -67,6 +67,32 @@ type alias PlayingModel =
     , panicLevel : Float
     , lastWonAt : Maybe Time.Posix
     , paused : Bool
+    , guards : List Guard
+    }
+
+
+type alias Guard =
+    { position : Position
+    , direction : Direction
+    , behavior : Behavior
+    }
+
+
+type Direction
+    = Up
+    | Left
+    | Right
+    | Down
+
+
+type Behavior
+    = RoamingRoom Room
+    | SillyChasingHero
+
+
+type alias Room =
+    { topLeft : Position
+    , bottomRight : Position
     }
 
 
@@ -77,7 +103,7 @@ type alias Roll =
 
 type alias Hero =
     { waitTime : Float
-    , facingRight : Bool
+    , direction : Direction
     , moving : Bool
     , attacking : Bool
     }
