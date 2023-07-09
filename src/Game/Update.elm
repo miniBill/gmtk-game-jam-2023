@@ -115,16 +115,14 @@ update msg model =
             model
 
         ( Loaded _ (Err e), _ ) ->
-            Debug.todo <| "CRASH " ++ Debug.toString e
+            let
+                _ =
+                    Debug.log "Error loading music" e
+            in
+            model
 
         ( Loaded key (Ok source), _ ) ->
             { model | sources = Dict.insert key source model.sources }
-
-        ( _, Pause _ ) ->
-            Debug.todo "Pause"
-
-        ( _, Won _ ) ->
-            Debug.todo "Won"
 
 
 queueEffect : String -> Model -> Model
@@ -182,15 +180,15 @@ maybeReset frameStuff model playingModel =
         ( playingModel, [] )
 
 
-regen : Model -> PlayingModel -> PlayingModel
-regen model playingModel =
+regen : Time.Posix -> PlayingModel -> PlayingModel
+regen now playingModel =
     let
         ( walls, rooms ) =
-            generateWalls model.now playingModel.gameWidth playingModel.gameHeight
+            generateWalls now playingModel.gameWidth playingModel.gameHeight
     in
     { playingModel
         | walls = walls
-        , rolls = createRolls model.now rooms
+        , rolls = createRolls now rooms
         , heroPosition = ( 1, 1 )
     }
 
@@ -282,32 +280,39 @@ toLevel level model playingModel =
         diff : Int
         diff =
             level - playingModel.level
-    in
-    (if playingModel.gameWidth > playingModel.gameHeight then
-        { playingModel
-            | level = level
-            , gameWidth = playingModel.gameWidth + diff
-            , gameHeight =
-                (toFloat (playingModel.gameWidth + diff)
+
+        ready : PlayingModel
+        ready =
+            { playingModel
+                | level = level
+                , panicLevel = 0
+                , lastWonAt = Just model.now
+            }
+
+        ( gameWidth, gameHeight ) =
+            if playingModel.gameWidth > playingModel.gameHeight then
+                ( playingModel.gameWidth + diff
+                , (toFloat (playingModel.gameWidth + diff)
                     * model.height
                     / model.width
-                )
+                  )
                     |> floor
-        }
+                )
 
-     else
-        { playingModel
-            | level = level
-            , gameHeight = playingModel.gameHeight + diff
-            , gameWidth =
-                (toFloat (playingModel.gameHeight + diff)
+            else
+                ( (toFloat (playingModel.gameHeight + diff)
                     * model.width
                     / model.height
-                )
+                  )
                     |> floor
-        }
-    )
-        |> regen model
+                , playingModel.gameHeight + diff
+                )
+    in
+    { ready
+        | gameWidth = gameWidth
+        , gameHeight = gameHeight
+    }
+        |> regen model.now
 
 
 updatePosition : FrameStuff -> PlayingModel -> ( PlayingModel, List Effect )
@@ -560,6 +565,8 @@ initPlaying flags =
     , rolls = createRolls flags.now rooms
     , level = 1
     , panicLevel = 0
+    , lastWonAt = Nothing
+    , paused = False
     }
 
 
@@ -860,7 +867,7 @@ audio model =
                 |> List.map
                     (\( key, volume ) ->
                         music model key musicAt
-                            |> Audio.scaleVolume (volume model.inner)
+                            |> Audio.scaleVolume (volume model model.inner)
                     )
 
         effects : List Audio
@@ -919,66 +926,89 @@ loadAudio key =
     Audio.loadAudio (Loaded key) <| "/audio/" ++ key
 
 
-baseVolume : InnerModel -> Float
-baseVolume gameState =
+fadeForVictory : Model -> Time.Posix -> Float
+fadeForVictory model at =
+    let
+        dt =
+            Time.posixToMillis model.now - Time.posixToMillis at
+    in
+    min 1 (0.25 + toFloat dt * 0.75 / 4.8065)
+
+
+baseVolume : Model -> InnerModel -> Float
+baseVolume model gameState =
     case gameState of
         Menu _ ->
             1
 
-        Playing _ ->
-            1
+        Playing { lastWonAt, paused } ->
+            if paused then
+                0
+
+            else
+                case lastWonAt of
+                    Just at ->
+                        fadeForVictory model at
+
+                    Nothing ->
+                        1
 
         Lost _ ->
             0
 
-        Pause _ ->
-            0
 
-        Won _ ->
-            0.25
-
-
-sneakyVolume : InnerModel -> Float
-sneakyVolume gameState =
+sneakyVolume : Model -> InnerModel -> Float
+sneakyVolume model gameState =
     case gameState of
         Menu _ ->
             0
 
-        Playing { panicLevel } ->
-            clamp 0 1 (panicLevel * -3 + 1)
+        Playing { paused, lastWonAt, panicLevel } ->
+            if paused then
+                1
+
+            else
+                case lastWonAt of
+                    Just at ->
+                        fadeForVictory model at
+
+                    Nothing ->
+                        clamp 0 1 (panicLevel * -3 + 1)
 
         Lost _ ->
             0
 
-        Pause _ ->
-            1
 
-        Won _ ->
-            0.25
-
-
-chaseVolume : InnerModel -> Float
-chaseVolume gameState =
+chaseVolume : Model -> InnerModel -> Float
+chaseVolume _ gameState =
     case gameState of
-        Playing { panicLevel } ->
-            clamp 0 1 (panicLevel * 3 - 0.5)
+        Playing { paused, panicLevel } ->
+            if paused then
+                0
+
+            else
+                clamp 0 1 (panicLevel * 3 - 0.5)
 
         _ ->
             0
 
 
-panicVolume : InnerModel -> Float
-panicVolume gameState =
+panicVolume : Model -> InnerModel -> Float
+panicVolume _ gameState =
     case gameState of
-        Playing { panicLevel } ->
-            clamp 0 1 (panicLevel * 2.5 - 1.25)
+        Playing { paused, panicLevel } ->
+            if paused then
+                0
+
+            else
+                clamp 0 1 (panicLevel * 2.5 - 1.25)
 
         _ ->
             0
 
 
-menuVolume : InnerModel -> Float
-menuVolume gameState =
+menuVolume : Model -> InnerModel -> Float
+menuVolume _ gameState =
     case gameState of
         Menu _ ->
             1

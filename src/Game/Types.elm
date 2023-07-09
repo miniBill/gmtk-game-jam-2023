@@ -38,8 +38,6 @@ type InnerModel
         { level : Int
         , sources : Dict String Source
         }
-    | Pause PlayingModel
-    | Won PlayingModel
 
 
 type Msg
@@ -67,6 +65,8 @@ type alias PlayingModel =
     , rolls : Dict Position Roll
     , level : Int
     , panicLevel : Float
+    , lastWonAt : Maybe Time.Posix
+    , paused : Bool
     }
 
 
