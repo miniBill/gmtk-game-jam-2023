@@ -8,7 +8,6 @@ import Game.Types as Game
 import Game.Update
 import Game.View
 import Html exposing (Html)
-import Html.Attributes
 import Html.Events
 import Json.Encode
 import Task
@@ -177,28 +176,12 @@ view model =
         WaitingWebAudioInit ->
             [ Html.div [] [ Html.text "Click anywhere to start" ]
             ]
-                |> center
+                |> Game.View.center [ Html.Events.onClick InitWebAudio ]
 
         WebAudioReady innerModel ->
             [ Html.map GameMsg <| Game.View.view innerModel.game
             ]
-                |> center
-
-
-center : List (Html Msg) -> Html Msg
-center =
-    Html.div
-        [ Html.Events.onClick InitWebAudio
-        , Html.Attributes.style "position" "absolute"
-        , Html.Attributes.style "top" "0"
-        , Html.Attributes.style "left" "0"
-        , Html.Attributes.style "width" "100vw"
-        , Html.Attributes.style "height" "100vh"
-        , Html.Attributes.style "display" "flex"
-        , Html.Attributes.style "color" "white"
-        , Html.Attributes.style "align-items" "center"
-        , Html.Attributes.style "justify-content" "center"
-        ]
+                |> Game.View.center []
 
 
 subscriptions : Model -> Sub Msg

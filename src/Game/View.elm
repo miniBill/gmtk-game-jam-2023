@@ -1,4 +1,4 @@
-module Game.View exposing (view)
+module Game.View exposing (center, view)
 
 import Color
 import Dict
@@ -69,25 +69,40 @@ view model =
                 ]
 
         Playing innerModel ->
-            PixelEngine.toHtml
-                { width = toFloat innerModel.gameWidth * tileSize
-                , options =
-                    Options.default
-                        |> Options.withScale (maxScale model innerModel)
-                        |> Options.withAnimationFPS 10
-                        |> Options.withMovementSpeed (1.2 / actionsPerSecond)
-                        |> Just
-                }
-                [ viewTopBar innerModel
-                , PixelEngine.imageArea
-                    { height = toFloat innerModel.gameHeight * tileSize
-                    , background = PixelEngine.colorBackground Color.blue
+            Html.div []
+                [ PixelEngine.toHtml
+                    { width = toFloat innerModel.gameWidth * tileSize
+                    , options =
+                        Options.default
+                            |> Options.withScale (maxScale model innerModel)
+                            |> Options.withAnimationFPS 10
+                            |> Options.withMovementSpeed (1.2 / actionsPerSecond)
+                            |> Just
                     }
-                    (viewRolls innerModel
-                        ++ viewWalls innerModel
-                        ++ [ viewHero innerModel ]
-                    )
-                , viewStatusMessage innerModel
+                    [ viewTopBar innerModel
+                    , PixelEngine.imageArea
+                        { height = toFloat innerModel.gameHeight * tileSize
+                        , background = PixelEngine.colorBackground Color.blue
+                        }
+                        (viewRolls innerModel
+                            ++ viewWalls innerModel
+                            ++ [ viewHero innerModel ]
+                        )
+                    , viewStatusMessage innerModel
+                    ]
+                , if innerModel.paused then
+                    center []
+                        [ Html.span
+                            [ Html.Attributes.style "font-size" "10vmin"
+                            , Html.Attributes.style "transform" "rotate(-10deg)"
+                            , Html.Attributes.style "background-color" "pink"
+                            , Html.Attributes.style "padding" "0 2vmin"
+                            ]
+                            [ Html.text "PAUSED" ]
+                        ]
+
+                  else
+                    Html.text ""
                 ]
 
         Lost { level } ->
@@ -307,3 +322,19 @@ toFloatPosition ( x, y ) =
     ( toFloat <| tileSize * x
     , toFloat <| tileSize * y
     )
+
+
+center : List (Attribute msg) -> List (Html msg) -> Html msg
+center attrs =
+    Html.div
+        (Html.Attributes.style "position" "absolute"
+            :: Html.Attributes.style "top" "0"
+            :: Html.Attributes.style "left" "0"
+            :: Html.Attributes.style "width" "100vw"
+            :: Html.Attributes.style "height" "100vh"
+            :: Html.Attributes.style "display" "flex"
+            :: Html.Attributes.style "color" "white"
+            :: Html.Attributes.style "align-items" "center"
+            :: Html.Attributes.style "justify-content" "center"
+            :: attrs
+        )

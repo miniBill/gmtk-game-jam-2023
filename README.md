@@ -1,8 +1,9 @@
 # TODO
 
 - enemies
-- movement - again
+- movement - redo
 - pause menu
+  - audio controls
 - credits
 - gamepad
 
@@ -14,6 +15,7 @@
 - Main character is a mummy wrapped in toilet paper - Liv
 - Art - Emily
 - Music - GabrielExists - https://gabriel-exists.bandcamp.com/
+- Background - https://unsplash.com/photos/qVotvbsuM_c
 
 # Ideas
 

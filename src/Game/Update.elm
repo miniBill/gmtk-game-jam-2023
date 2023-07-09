@@ -176,6 +176,9 @@ maybeReset frameStuff model playingModel =
     else if wasReleased Gamepad.X frameStuff playingModel then
         ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }, [] )
 
+    else if wasClicked Gamepad.Start frameStuff playingModel then
+        ( { playingModel | paused = not playingModel.paused }, [] )
+
     else
         ( playingModel, [] )
 
@@ -322,7 +325,10 @@ updatePosition frameStuff model =
         hero =
             model.hero
     in
-    if hero.waitTime > 0 then
+    if model.paused then
+        ( model, [] )
+
+    else if hero.waitTime > 0 then
         ( { model
             | hero =
                 { hero | waitTime = max 0 <| hero.waitTime - frameStuff.dt }
@@ -429,6 +435,14 @@ wasReleased key frameStuff model =
         || List.any (\gamepad -> Gamepad.wasReleased gamepad key) frameStuff.gamepads
 
 
+wasClicked : Digital -> FrameStuff -> PlayingModel -> Bool
+wasClicked key frameStuff model =
+    (not (EverySet.member key model.previous.keyboardPressed)
+        && EverySet.member key model.keyboardPressed
+    )
+        || List.any (\gamepad -> Gamepad.wasClicked gamepad key) frameStuff.gamepads
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
@@ -486,8 +500,11 @@ toDigital string =
         "e" ->
             Just Gamepad.Y
 
-        " " ->
+        "c" ->
             Just Gamepad.A
+
+        " " ->
+            Just Gamepad.Start
 
         "Backspace" ->
             Just Gamepad.Back
@@ -833,7 +850,8 @@ controls =
     , ( "Down", Gamepad.DpadDown )
     , ( "Left", Gamepad.DpadLeft )
     , ( "Right", Gamepad.DpadRight )
-    , ( "Flip", Gamepad.A )
+    , ( "Next level", Gamepad.A )
+    , ( "Pause", Gamepad.Start )
     , ( "Reset", Gamepad.Back )
     , ( "Panic up", Gamepad.Y )
     , ( "Panic down", Gamepad.X )
