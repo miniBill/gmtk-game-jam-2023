@@ -62,6 +62,7 @@ update msg model =
             { model
                 | inner = Playing <| initPlaying model
             }
+                |> queueEffect AudioSources.Effects.menuHover
 
         ( Tick frameStuff, Menu ) ->
             { model | now = frameStuff.timestamp }
