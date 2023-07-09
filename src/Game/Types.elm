@@ -61,6 +61,7 @@ type alias PlayingModel =
     , gameHeight : Int
     , walls : Set Position
     , rolls : Dict Position Roll
+    , rooms : List Room
     , level : Int
     , panicLevel : Float
     , lastPanicIncreaseAt : Time.Posix

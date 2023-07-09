@@ -12,6 +12,7 @@ import Game.Types exposing (Behavior(..), Direction(..), Effect, Flags, Guard, H
 import Gamepad exposing (Digital)
 import Gamepad.Simple exposing (FrameStuff)
 import Json.Decode as Decode exposing (Decoder)
+import List.Extra
 import Quantity
 import Random exposing (Generator)
 import Random.Extra
@@ -234,56 +235,76 @@ updateGuard frameStuff model guard =
                     ( maxX, maxY ) =
                         room.bottomRight
 
-                    ( wantedX, wantedY ) =
-                        move guard.direction guard.position
-
-                    newDirection : Direction
-                    newDirection =
-                        if wantedX == minX || wantedX == maxX then
-                            if wantedY == minY + 1 then
-                                Down
-
-                            else
-                                Up
-
-                        else if wantedY == minY || wantedY == maxY then
-                            if wantedX == minX + 1 then
-                                Right
-
-                            else
-                                Left
-
-                        else
-                            guard.direction
-
-                    movedGuard : Guard
-                    movedGuard =
-                        if newDirection == guard.direction then
-                            { guard
-                                | position =
-                                    move guard.direction guard.position
-                                , waitTime = waitTime
-                            }
-
-                        else
-                            { guard
-                                | direction = newDirection
-                                , waitTime = waitTime / 2
-                            }
-
-                    lightPosition : Position
-                    lightPosition =
-                        move movedGuard.direction movedGuard.position
+                    ( guardX, guardY ) =
+                        guard.position
                 in
-                if lightPosition == model.heroPosition then
-                    { movedGuard | behavior = SillyChasingHero }
+                if guardX == maxX then
+                    { guard | direction = Left }
+
+                else if guardY == maxY then
+                    { guard | direction = Up }
 
                 else
-                    movedGuard
+                    let
+                        ( wantedX, wantedY ) =
+                            move guard.direction guard.position
+
+                        newDirection : Direction
+                        newDirection =
+                            if wantedX == minX || wantedX == maxX then
+                                if wantedY == minY + 1 then
+                                    Down
+
+                                else
+                                    Up
+
+                            else if wantedY == minY || wantedY == maxY then
+                                if wantedX == minX + 1 then
+                                    Right
+
+                                else
+                                    Left
+
+                            else
+                                guard.direction
+
+                        movedGuard : Guard
+                        movedGuard =
+                            if newDirection == guard.direction then
+                                { guard
+                                    | position = move guard.direction guard.position
+                                    , waitTime = waitTime
+                                }
+
+                            else
+                                { guard
+                                    | direction = newDirection
+                                    , waitTime = waitTime / 2
+                                }
+                    in
+                    if Set.member movedGuard.position model.walls then
+                        guard
+
+                    else
+                        let
+                            lightPosition : Position
+                            lightPosition =
+                                move movedGuard.direction movedGuard.position
+                        in
+                        if lightPosition == model.heroPosition then
+                            { movedGuard | behavior = SillyChasingHero }
+
+                        else
+                            movedGuard
 
             SillyChasingHero ->
                 if model.panicLevel == 0 then
-                    guard
+                    case findRoom guard.position model.rooms of
+                        Nothing ->
+                            guard
+
+                        Just room ->
+                            { guard | behavior = RoamingRoom room }
 
                 else
                     let
@@ -332,6 +353,26 @@ updateGuard frameStuff model guard =
                             | direction = newDirection
                             , waitTime = waitTime / 2
                         }
+
+
+findRoom : Position -> List Room -> Maybe Room
+findRoom position rooms =
+    List.Extra.find (contains position) rooms
+
+
+contains : Position -> Room -> Bool
+contains position room =
+    let
+        ( x, y ) =
+            position
+
+        ( minX, minY ) =
+            room.topLeft
+
+        ( maxX, maxY ) =
+            room.bottomRight
+    in
+    minX < x && x <= maxX && y < minY && y <= maxY
 
 
 queueEffect : String -> Model -> Model
@@ -839,6 +880,7 @@ initPlaying flags =
     , gameWidth = gameWidth
     , gameHeight = gameHeight
     , walls = walls
+    , rooms = rooms
     , rolls = createRolls flags.now rooms
     , level = 1
     , panicLevel = 0
