@@ -935,7 +935,7 @@ fadeForVictory model lastWonAt =
                 dt =
                     Time.posixToMillis model.now - Time.posixToMillis at
             in
-            min 1 (0.25 + toFloat dt * 0.75 / 4.8065)
+            clamp 0.25 1 (0.25 + toFloat dt * 0.75 / 4806.5)
 
         Nothing ->
             1
