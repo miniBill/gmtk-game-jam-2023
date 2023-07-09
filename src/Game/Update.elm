@@ -47,10 +47,14 @@ update msg model =
             }
 
         ( MenuHover, _ ) ->
-            { model | effects = ( AudioSources.Effects.menuHover, model.now ) :: model.effects }
+            model
+                |> queueEffect AudioSources.Effects.menuHover
 
         ( Start, Menu _ ) ->
-            { model | inner = Playing <| initPlaying model }
+            { model
+                | inner = Playing <| initPlaying model
+            }
+                |> queueEffect AudioSources.Effects.menuClick
 
         ( Start, Lost _ ) ->
             { model | inner = Playing <| initPlaying model }
@@ -121,6 +125,11 @@ update msg model =
 
         ( _, Won _ ) ->
             Debug.todo "Won"
+
+
+queueEffect : String -> Model -> Model
+queueEffect key model =
+    { model | effects = ( key, model.now ) :: model.effects }
 
 
 updatePipe :
@@ -499,12 +508,13 @@ init : Flags -> ( Model, AudioCmd Msg )
 init flags =
     ( { now = flags.now
       , startTime = flags.now
-      , effects = [ ( AudioSources.Music.menuIntro, flags.now ) ]
+      , effects = []
       , width = flags.width
       , height = flags.height
       , sources = Dict.empty
       , inner = Menu {}
       }
+        |> queueEffect AudioSources.Music.menuIntro
     , AudioSources.all
         |> List.map loadAudio
         |> Audio.cmdBatch
