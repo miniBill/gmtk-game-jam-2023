@@ -28,7 +28,7 @@ maxArea =
 
 minSideLength : Int
 minSideLength =
-    2
+    3
 
 
 update : Msg -> Model -> Model
@@ -170,7 +170,7 @@ deltaT model old =
 
 increasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
 increasePanic model playingModel =
-    if deltaT model playingModel.lastPanicIncreaseAt < 1000 / actionsPerSecond then
+    if deltaT model playingModel.lastPanicIncreaseAt < 0.5 * 1000 / actionsPerSecond then
         ( playingModel, [] )
 
     else
@@ -186,7 +186,7 @@ increasePanic model playingModel =
                     playingModel.panicLevel == 0
             in
             ( { playingModel
-                | panicLevel = clamp 0 1 <| 0.1 + playingModel.panicLevel
+                | panicLevel = clamp 0 1 <| 0.05 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
                 , lastPanicDecreaseAt = model.now -- prevent immediate decrease
               }
