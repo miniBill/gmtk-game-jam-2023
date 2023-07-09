@@ -170,26 +170,23 @@ deltaT model old =
 
 increasePanic : Model -> PlayingModel -> ( PlayingModel, List Effect )
 increasePanic model playingModel =
-    if deltaT model playingModel.lastPanicIncreaseAt < 2 * 1000 / actionsPerSecond then
+    if deltaT model playingModel.lastPanicIncreaseAt < 1000 / actionsPerSecond then
         ( playingModel, [] )
 
     else
         let
-            guardHasSpotted : { a | direction : Direction, position : Position } -> Bool
-            guardHasSpotted guard =
-                move guard.direction guard.position == playingModel.heroPosition
-
             isSpotted : Bool
             isSpotted =
-                List.any guardHasSpotted playingModel.guards
+                List.any (hasSpotted playingModel) playingModel.guards
         in
         if isSpotted then
             let
+                playSpotted : Bool
                 playSpotted =
-                    deltaT model playingModel.lastSpottedSoundAt > 1000
+                    deltaT model playingModel.lastSpottedSoundAt > 2000
             in
             ( { playingModel
-                | panicLevel = clamp 0 1 <| 0.5 + playingModel.panicLevel
+                | panicLevel = clamp 0 1 <| 0.1 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
                 , lastPanicDecreaseAt = model.now -- prevent immediate decrease
                 , lastSpottedSoundAt =
@@ -200,10 +197,10 @@ increasePanic model playingModel =
                         playingModel.lastSpottedSoundAt
               }
             , if playSpotted then
-                []
+                [ ( AudioSources.Effects.spotted, model.now ) ]
 
               else
-                [ ( AudioSources.Effects.spotted, model.now ) ]
+                []
             )
 
         else
@@ -241,7 +238,7 @@ updateGuardsPosition frameStuff model =
 updateGuard : FrameStuff -> PlayingModel -> Guard -> Guard
 updateGuard frameStuff model guard =
     if guard.waitTime > 0 then
-        if move guard.direction guard.position == model.heroPosition then
+        if hasSpotted model guard && guard.behavior /= SillyChasingHero then
             startChasing model guard
 
         else
@@ -356,7 +353,23 @@ updateGuard frameStuff model guard =
 
                         newDirection : Direction
                         newDirection =
-                            if heroX > guardX && isFree Right then
+                            if modBy 2 (Time.posixToMillis frameStuff.timestamp) == 0 then
+                                if heroY > guardY && isFree Down then
+                                    Down
+
+                                else if heroY < guardY && isFree Up then
+                                    Up
+
+                                else if heroX > guardX && isFree Right then
+                                    Right
+
+                                else if heroX < guardX && isFree Left then
+                                    Left
+
+                                else
+                                    guard.direction
+
+                            else if heroX > guardX && isFree Right then
                                 Right
 
                             else if heroX < guardX && isFree Left then
@@ -378,17 +391,93 @@ updateGuard frameStuff model guard =
                     if Set.member newPosition model.walls then
                         { guard | direction = newDirection }
 
-                    else if newDirection == guard.direction then
+                    else
                         { guard
                             | position = newPosition
                             , waitTime = waitTime
+                            , direction = newDirection
                         }
 
-                    else
-                        { guard
-                            | direction = newDirection
-                            , waitTime = waitTime / 2
-                        }
+
+hasSpotted : PlayingModel -> Guard -> Bool
+hasSpotted { heroPosition, walls } guard =
+    let
+        ( heroX, heroY ) =
+            heroPosition
+
+        ( guardX, guardY ) =
+            guard.position
+
+        dx : Float
+        dx =
+            toFloat <| heroX - guardX
+
+        dy : Float
+        dy =
+            toFloat <| heroY - guardY
+
+        ( distance, angle ) =
+            toPolar heroPosition guard.position
+
+        ( _, idealAngle ) =
+            toPolar (move guard.direction guard.position) guard.position
+
+        a : Float
+        a =
+            -dy
+
+        b : Float
+        b =
+            dx
+
+        c : Float
+        c =
+            dy * toFloat guardX - dx * toFloat guardY
+
+        hitsWalls : Bool
+        hitsWalls =
+            walls
+                |> Set.toList
+                |> List.any
+                    (\( wallX, wallY ) ->
+                        (min guardX heroX <= wallX)
+                            && (wallX <= max guardX heroX)
+                            && (min guardY heroY <= wallY)
+                            && (wallY <= max guardY heroY)
+                            && abs (a * toFloat wallX + b * toFloat wallY + c)
+                            / sqrt (a ^ 2 + b ^ 2)
+                            < sqrt 2
+                    )
+    in
+    distance < 5 && abs (angle - idealAngle) < 0.25 && not hitsWalls
+
+
+toPolar : Position -> Position -> ( Float, Float )
+toPolar heroPosition guardPosition =
+    let
+        ( heroX, heroY ) =
+            heroPosition
+
+        ( guardX, guardY ) =
+            guardPosition
+
+        dx : Float
+        dx =
+            toFloat <| heroX - guardX
+
+        dy : Float
+        dy =
+            toFloat <| heroY - guardY
+
+        distance : Float
+        distance =
+            sqrt (dx ^ 2 + dy ^ 2)
+
+        angle : Float
+        angle =
+            atan2 dy dx / pi
+    in
+    ( distance, angle )
 
 
 startChasing : PlayingModel -> Guard -> Guard
@@ -450,7 +539,7 @@ moveToPrevious model =
 
 debugging : Bool
 debugging =
-    False
+    True
 
 
 maybeReset : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
@@ -468,12 +557,6 @@ maybeReset frameStuff model playingModel =
             ( toLevel (playingModel.level + 1) model playingModel
             , [ ( AudioSources.Effects.victory, model.now ) ]
             )
-
-        else if wasReleased Gamepad.Y frameStuff playingModel then
-            ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }, [] )
-
-        else if wasReleased Gamepad.X frameStuff playingModel then
-            ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }, [] )
 
         else
             ( playingModel, [] )
