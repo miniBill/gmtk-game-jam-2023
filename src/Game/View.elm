@@ -234,11 +234,16 @@ viewTopBar playingModel =
 
 topBar : PlayingModel -> String
 topBar model =
-    "Level "
-        ++ String.fromInt model.level
-        ++ " - panic "
-        ++ String.padLeft 3 ' ' (String.fromInt <| round <| model.panicLevel * 100)
-        ++ "%"
+    if model.level < 3 then
+        "Level "
+            ++ String.fromInt model.level
+
+    else
+        "Level "
+            ++ String.fromInt model.level
+            ++ " - panic "
+            ++ String.padLeft 3 ' ' (String.fromInt <| round <| model.panicLevel * 100)
+            ++ "%"
 
 
 viewStatusMessage : PlayingModel -> PixelEngine.Area msg
