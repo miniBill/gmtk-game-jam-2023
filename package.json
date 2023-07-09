@@ -11,6 +11,7 @@
   "scripts": {
     "start": "yarn build:prepare; concurrently \"yarn elm-watch hot\" \"cd dist; python -m http.server 8001\"",
     "build:assets": "mkdir -p dist; cp src/index.html src/favicon.svg src/*.js dist; rm -rf dist/img; cp -r img dist/; rm -rf dist/audio; cp -r audio dist/",
-    "build:prepare": "yarn; rm -rf dist/*; yarn build:assets; rm -rf generated/*; yarn elm-codegen install; ts-node ./scripts/generate.ts"
+    "build:prepare": "yarn; rm -rf dist/*; yarn build:assets; rm -rf generated/*; yarn elm-codegen install; ts-node ./scripts/generate.ts",
+    "build": "yarn build:prepare; yarn elm-watch make --optimize"
   }
 }

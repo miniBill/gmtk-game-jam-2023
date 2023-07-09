@@ -228,10 +228,7 @@ updateGuard : FrameStuff -> PlayingModel -> Guard -> Guard
 updateGuard frameStuff model guard =
     if guard.waitTime > 0 then
         if move guard.direction guard.position == model.heroPosition then
-            { guard
-                | waitTime = max 0 <| guard.waitTime - frameStuff.dt
-                , behavior = SillyChasingHero
-            }
+            startChasing model guard
 
         else
             { guard | waitTime = max 0 <| guard.waitTime - frameStuff.dt }
@@ -317,7 +314,7 @@ updateGuard frameStuff model guard =
                                 move movedGuard.direction movedGuard.position
                         in
                         if lightPosition == model.heroPosition then
-                            { movedGuard | behavior = SillyChasingHero }
+                            startChasing model movedGuard
 
                         else
                             movedGuard
@@ -378,6 +375,14 @@ updateGuard frameStuff model guard =
                             | direction = newDirection
                             , waitTime = waitTime / 2
                         }
+
+
+startChasing : PlayingModel -> Guard -> Guard
+startChasing model guard =
+    { guard
+        | waitTime = 1000 + 1000 / toFloat (model.level - 2) -- Let the hero try and escape
+        , behavior = SillyChasingHero
+    }
 
 
 findRoom : Position -> List Room -> Maybe Room
