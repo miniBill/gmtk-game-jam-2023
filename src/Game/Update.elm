@@ -1419,7 +1419,7 @@ sneakyVolume model gameState =
 
             else
                 fadeForVictory model lastWonAt
-                    * clamp 0 1 (panicLevel * -3 + 1)
+                    * clamp 0 1 (panicLevel * -7.5 + 1)
                     * fadeInGame model playingModel
 
         Lost _ ->
@@ -1434,7 +1434,7 @@ chaseVolume model gameState =
                 0
 
             else
-                clamp 0 1 (panicLevel * 3 - 0.5)
+                clamp 0 1 (panicLevel * 2)
                     * fadeInGame model playingModel
 
         _ ->
