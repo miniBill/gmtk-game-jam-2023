@@ -182,11 +182,12 @@ increasePanic model playingModel =
             isSpotted : Bool
             isSpotted =
                 List.any guardHasSpotted playingModel.guards
-
-            playSpotted =
-                deltaT model playingModel.lastSpottedSoundAt > 1000
         in
         if isSpotted then
+            let
+                playSpotted =
+                    deltaT model playingModel.lastSpottedSoundAt > 1000
+            in
             ( { playingModel
                 | panicLevel = clamp 0 1 <| 0.5 + playingModel.panicLevel
                 , lastPanicIncreaseAt = model.now
