@@ -863,7 +863,7 @@ init flags =
       , height = flags.height
       , sources = Dict.empty
       , inner = Menu {}
-      , mainVolume = 0.5
+      , mainVolume = 1
       , musicVolume = 1
       , effectsVolume = 1
       }
@@ -1230,7 +1230,7 @@ audio model =
     in
     (effects ++ tracks)
         |> Audio.group
-        |> Audio.scaleVolume (0.5 * model.mainVolume)
+        |> Audio.scaleVolume (0.2 * model.mainVolume)
 
 
 effect : Model -> String -> Time.Posix -> Audio

@@ -197,7 +197,7 @@ viewGuards model =
 viewGuard : Guard -> List (Sprite msg)
 viewGuard guard =
     [ ( toFloatPosition guard.position
-      , Image.fromSrc Sprites.guard.path
+      , Image.fromSrc Sprites.guard
       )
     , let
         lightPosition : ( Float, Float )

@@ -17,6 +17,7 @@
 - Art - Emily
 - Music - GabrielExists - https://gabriel-exists.bandcamp.com/
 - Background - https://unsplash.com/photos/qVotvbsuM_c
+- Guards - https://opengameart.org/content/2d-soldier-for-boneskeleton-animation
 
 # Ideas
 
