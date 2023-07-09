@@ -218,13 +218,20 @@ updateGuardsPosition frameStuff model =
 updateGuard : FrameStuff -> PlayingModel -> Guard -> Guard
 updateGuard frameStuff model guard =
     if guard.waitTime > 0 then
-        { guard | waitTime = max 0 <| guard.waitTime - frameStuff.dt }
+        if move guard.direction guard.position == model.heroPosition then
+            { guard
+                | waitTime = max 0 <| guard.waitTime - frameStuff.dt
+                , behavior = SillyChasingHero
+            }
+
+        else
+            { guard | waitTime = max 0 <| guard.waitTime - frameStuff.dt }
 
     else
         let
             waitTime : Float
             waitTime =
-                (1000 + 3000 / toFloat model.level) / actionsPerSecond
+                3 * (1000 + 3000 / toFloat model.level) / actionsPerSecond
         in
         case guard.behavior of
             RoamingRoom room ->
@@ -239,10 +246,18 @@ updateGuard frameStuff model guard =
                         guard.position
                 in
                 if guardX == maxX then
-                    { guard | direction = Left }
+                    if guard.direction == Left then
+                        { guard | position = move Left guard.position }
+
+                    else
+                        { guard | direction = Left }
 
                 else if guardY == maxY then
-                    { guard | direction = Up }
+                    if guard.direction == Up then
+                        { guard | position = move Up guard.position }
+
+                    else
+                        { guard | direction = Up }
 
                 else
                     let
@@ -372,7 +387,7 @@ contains position room =
         ( maxX, maxY ) =
             room.bottomRight
     in
-    minX < x && x <= maxX && y < minY && y <= maxY
+    minX < x && x <= maxX && minY < y && y <= maxY
 
 
 queueEffect : String -> Model -> Model
@@ -406,31 +421,32 @@ moveToPrevious model =
 
 maybeReset : FrameStuff -> Model -> PlayingModel -> ( PlayingModel, List Effect )
 maybeReset frameStuff model playingModel =
-    let
-        _ =
-            Debug.todo
-    in
-    if wasReleased Gamepad.Back frameStuff playingModel then
-        ( toLevel 1 model playingModel
-        , [ ( AudioSources.Effects.lose, model.now ) ]
-        )
-
-    else if wasReleased Gamepad.A frameStuff playingModel then
-        ( toLevel (playingModel.level + 1) model playingModel
-        , [ ( AudioSources.Effects.victory, model.now ) ]
-        )
-
-    else if wasReleased Gamepad.Y frameStuff playingModel then
-        ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }, [] )
-
-    else if wasReleased Gamepad.X frameStuff playingModel then
-        ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }, [] )
-
-    else if wasClicked Gamepad.Start frameStuff playingModel then
+    if wasClicked Gamepad.Start frameStuff playingModel then
         ( { playingModel | paused = not playingModel.paused }, [] )
 
     else
-        ( playingModel, [] )
+        let
+            _ =
+                Debug.todo
+        in
+        if wasReleased Gamepad.Back frameStuff playingModel then
+            ( toLevel 1 model playingModel
+            , [ ( AudioSources.Effects.lose, model.now ) ]
+            )
+
+        else if wasReleased Gamepad.A frameStuff playingModel then
+            ( toLevel (playingModel.level + 1) model playingModel
+            , [ ( AudioSources.Effects.victory, model.now ) ]
+            )
+
+        else if wasReleased Gamepad.Y frameStuff playingModel then
+            ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel + 0.05 }, [] )
+
+        else if wasReleased Gamepad.X frameStuff playingModel then
+            ( { playingModel | panicLevel = clamp 0 1 <| playingModel.panicLevel - 0.05 }, [] )
+
+        else
+            ( playingModel, [] )
 
 
 regen : Time.Posix -> PlayingModel -> PlayingModel
@@ -442,6 +458,7 @@ regen now playingModel =
     { playingModel
         | walls = walls
         , rolls = createRolls now rooms
+        , rooms = rooms
         , heroPosition = ( 1, 1 )
         , guards = createGuards now rooms playingModel.level
     }
