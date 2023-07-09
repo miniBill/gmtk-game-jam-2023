@@ -55,20 +55,13 @@ update msg model =
             model
                 |> queueEffect AudioSources.Effects.menuHover
 
-        ( Start, Menu ) ->
+        ( Start, Playing _ ) ->
+            model
+
+        ( Start, _ ) ->
             { model
                 | inner = Playing <| initPlaying model
             }
-                |> queueEffect AudioSources.Effects.menuClick
-
-        ( Start, _ ) ->
-            model
-
-        ( ToMenu, Lost _ ) ->
-            { model | inner = Menu }
-
-        ( ToMenu, _ ) ->
-            model
 
         ( Tick frameStuff, Menu ) ->
             { model | now = frameStuff.timestamp }
@@ -156,7 +149,7 @@ checkDeath model playingModel =
     in
     if isDeaded then
         { model
-            | inner = Lost { level = playingModel.level }
+            | inner = Lost { level = playingModel.level, at = model.now }
             , effects =
                 ( AudioSources.Effects.lose, model.now )
                     :: model.effects
@@ -166,7 +159,7 @@ checkDeath model playingModel =
         model
 
 
-{-| Time elapsed since the given instant.
+{-| Time elapsed in milliseconds since the given instant.
 -}
 deltaT : Model -> Time.Posix -> Float
 deltaT model old =
@@ -1408,8 +1401,8 @@ baseVolume model gameState =
             else
                 fadeForVictory model lastWonAt
 
-        Lost _ ->
-            0
+        Lost { at } ->
+            clamp 0 1 ((deltaT model at - 3500) / 4000)
 
 
 sneakyVolume : Model -> InnerModel -> Float
@@ -1470,8 +1463,8 @@ menuVolume model gameState =
         Playing playingModel ->
             fadeOutMenu model playingModel
 
-        _ ->
-            0
+        Lost { at } ->
+            clamp 0 1 ((deltaT model at - 3500) / 4000)
 
 
 fadeInGame : Model -> PlayingModel -> Float

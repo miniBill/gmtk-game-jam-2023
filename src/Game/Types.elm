@@ -37,7 +37,7 @@ type alias Effect =
 type InnerModel
     = Menu
     | Playing PlayingModel
-    | Lost { level : Int }
+    | Lost { level : Int, at : Time.Posix }
 
 
 type Msg
@@ -46,7 +46,6 @@ type Msg
     | KeyDown Digital
     | KeyUp Digital
     | Start
-    | ToMenu
     | Loaded String (Result Audio.LoadError Source)
     | MenuHover
     | CleanQueue

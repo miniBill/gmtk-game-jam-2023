@@ -176,7 +176,7 @@ view model =
                 , Html.Attributes.style "background" "pink"
                 , Html.Attributes.style "padding" "0 2vmin"
                 , Html.Attributes.style "color" "black"
-                , Html.Events.onClick ToMenu
+                , Html.Events.onClick Start
                 ]
                 [ Html.text <|
                     "Good job, you reached level "
