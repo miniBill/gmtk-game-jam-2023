@@ -35,7 +35,7 @@ type alias Effect =
 
 
 type InnerModel
-    = Menu {}
+    = Menu
     | Playing PlayingModel
     | Lost { level : Int }
 

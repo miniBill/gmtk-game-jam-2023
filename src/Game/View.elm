@@ -88,7 +88,7 @@ muteButtons model =
 view : Model -> Html Msg
 view model =
     case model.inner of
-        Menu _ ->
+        Menu ->
             Styled.toUnstyled <|
                 Styled.styled Styled.div
                     [ Css.displayFlex

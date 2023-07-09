@@ -55,7 +55,7 @@ update msg model =
             model
                 |> queueEffect AudioSources.Effects.menuHover
 
-        ( Start, Menu _ ) ->
+        ( Start, Menu ) ->
             { model
                 | inner = Playing <| initPlaying model
             }
@@ -65,12 +65,12 @@ update msg model =
             model
 
         ( ToMenu, Lost _ ) ->
-            { model | inner = Menu {} }
+            { model | inner = Menu }
 
         ( ToMenu, _ ) ->
             model
 
-        ( Tick frameStuff, Menu _ ) ->
+        ( Tick frameStuff, Menu ) ->
             { model | now = frameStuff.timestamp }
 
         ( Tick frameStuff, Playing innerModel ) ->
@@ -962,7 +962,7 @@ init flags =
       , width = flags.width
       , height = flags.height
       , sources = Dict.empty
-      , inner = Menu {}
+      , inner = Menu
       , mainVolume = 1
       , musicVolume = 1
       , effectsVolume = 1
@@ -1387,7 +1387,7 @@ fadeForVictory model lastWonAt =
 baseVolume : Model -> InnerModel -> Float
 baseVolume model gameState =
     case gameState of
-        Menu _ ->
+        Menu ->
             1
 
         Playing { lastWonAt, paused } ->
@@ -1404,7 +1404,7 @@ baseVolume model gameState =
 sneakyVolume : Model -> InnerModel -> Float
 sneakyVolume model gameState =
     case gameState of
-        Menu _ ->
+        Menu ->
             0
 
         Playing { paused, lastWonAt, panicLevel } ->
@@ -1450,7 +1450,7 @@ panicVolume _ gameState =
 menuVolume : Model -> InnerModel -> Float
 menuVolume _ gameState =
     case gameState of
-        Menu _ ->
+        Menu ->
             1
 
         _ ->
