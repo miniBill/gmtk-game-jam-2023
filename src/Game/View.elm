@@ -134,9 +134,9 @@ view model =
                         { height = toFloat innerModel.gameHeight * tileSize
                         , background =
                             PixelEngine.imageBackground
-                                { source = Sprites.floor
-                                , width = 16
-                                , height = 16
+                                { source = Sprites.floor.path
+                                , width = toFloat Sprites.floor.width
+                                , height = toFloat Sprites.floor.height
                                 }
                         }
                         (viewRolls innerModel
@@ -197,9 +197,7 @@ viewGuards model =
 viewGuard : Guard -> List (Sprite msg)
 viewGuard guard =
     [ ( toFloatPosition guard.position
-      , Image.fromTile
-            (Tile.fromPosition ( 0, 0 ))
-            Sprites.guard
+      , Image.fromSrc Sprites.guard.path
       )
     , let
         lightPosition : ( Float, Float )

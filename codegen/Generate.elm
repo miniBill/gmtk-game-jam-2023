@@ -90,7 +90,7 @@ fileToGen moduleName { filename, contents } =
             toName filename
 
         path =
-            String.join "/" (moduleName ++ [ filename ])
+            String.join "/" ("img" :: moduleName ++ [ filename ])
     in
     if String.endsWith ".png" filename then
         contents
@@ -104,7 +104,6 @@ fileToGen moduleName { filename, contents } =
                     in
                     if
                         List.member "Fonts" moduleName
-                            || List.member "Sprites" moduleName
                             || String.contains "spritesheet" name
                     then
                         let
@@ -126,7 +125,7 @@ fileToGen moduleName { filename, contents } =
                         in
                         if widthInTiles == 1 && heightInTiles == 1 then
                             Gen.PixelEngine.Tile.tileset
-                                { source = "img/" ++ path
+                                { source = path
                                 , spriteWidth = size
                                 , spriteHeight = size
                                 }
@@ -135,7 +134,7 @@ fileToGen moduleName { filename, contents } =
                             Elm.record
                                 [ ( "tileset"
                                   , Gen.PixelEngine.Tile.tileset
-                                        { source = "img/" ++ path
+                                        { source = path
                                         , spriteWidth = size
                                         , spriteHeight = size
                                         }
@@ -158,7 +157,7 @@ fileToGen moduleName { filename, contents } =
                 )
 
     else if String.endsWith ".svg" filename then
-        ("img/" ++ path)
+        path
             |> Elm.string
             |> Elm.declaration (String.Extra.camelize name)
             |> Elm.expose
